@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_match3::{Match3Plugin, Board};
+use bevy_match3::{Match3Plugin, board::Board};
 
 fn main() {
     App::new()
