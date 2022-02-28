@@ -22,6 +22,7 @@ pub(crate) fn read_commands(
                             .unwrap();
                     };
                 }
+                BoardCommand::Pop(_) => todo!(),
             }
         }
     }
