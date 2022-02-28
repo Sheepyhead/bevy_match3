@@ -1,4 +1,5 @@
 use bevy::{prelude::*, utils::HashMap};
+use rand::Rng;
 
 pub struct Match3Plugin;
 
@@ -11,12 +12,14 @@ impl Plugin for Match3Plugin {
                  board_dimensions,
              }| (*board_dimensions, *gem_types),
         );
+
         let mut gems = HashMap::default();
         (0..dimensions.x).for_each(|x| {
             (0..dimensions.y).for_each(|y| {
-                gems.insert(UVec2::new(x, y), 0);
+                gems.insert(UVec2::new(x, y), rand::thread_rng().gen_range(0..types));
             })
         });
+
         app.insert_resource(Board { dimensions, gems });
     }
 }

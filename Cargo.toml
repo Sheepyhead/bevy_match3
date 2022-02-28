@@ -9,3 +9,4 @@ description = "A logic library for quickly adding a match-3 system to any bevy p
 
 [dependencies]
 bevy = "0.6.1"
+rand = "0.8.5"
