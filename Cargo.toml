@@ -1,0 +1,11 @@
+[package]
+name = "bevy_match3"
+authors = ["Troels \"Sheepyhead\" Jessen <trojes@tuta.io>"]
+version = "0.1.0"
+edition = "2021"
+description = "A logic library for quickly adding a match-3 system to any bevy project"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = "0.6.1"
