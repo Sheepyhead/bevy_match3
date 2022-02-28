@@ -17,7 +17,7 @@ impl Plugin for Match3Plugin {
         let mut gems = HashMap::default();
         (0..board_dimensions.x).for_each(|x| {
             (0..board_dimensions.y).for_each(|y| {
-                gems.insert(UVec2::new(x, y), rand::thread_rng().gen_range(0..gem_types));
+                gems.insert([x, y].into(), rand::thread_rng().gen_range(0..gem_types));
             })
         });
 
@@ -38,7 +38,7 @@ impl Default for Match3Config {
     fn default() -> Self {
         Self {
             gem_types: 5,
-            board_dimensions: UVec2::new(10, 10),
+            board_dimensions: [10, 10].into(),
         }
     }
 }
@@ -54,7 +54,7 @@ impl std::fmt::Display for Board {
             f.write_fmt(format_args!(
                 "{:?}\n",
                 (0..self.dimensions.y)
-                    .map(|y| self.gems[&UVec2::new(x, y)])
+                    .map(|y| self.gems[&[x, y].into()])
                     .collect::<Vec<_>>()
             ))
         });
@@ -65,5 +65,59 @@ impl std::fmt::Display for Board {
             }
         }
         Ok(())
+    }
+}
+
+impl From<Vec<Vec<u32>>> for Board {
+    fn from(rows: Vec<Vec<u32>>) -> Self {
+        let mut gems = HashMap::default();
+        let mut width = 0;
+        let mut height = 0;
+        rows.iter().enumerate().for_each(|(y, row)| {
+            height += 1;
+            row.iter().enumerate().for_each(|(x, gem)| {
+                gems.insert([x as u32, y as u32].into(), *gem);
+                if height == 1 {
+                    width += 1;
+                }
+            })
+        });
+        Board {
+            gems,
+            dimensions: [width, height].into(),
+        }
+    }
+}
+
+impl Board {
+    pub fn get(&self, pos: &UVec2) -> Option<&u32> {
+        self.gems.get(pos)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Board;
+
+    #[test]
+    fn test_board_creation() {
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![10, 11, 12, 13, 14],
+            vec![15, 16, 17, 18, 19],
+            vec![20, 21, 22, 23, 24],
+            vec![25, 26, 27, 28, 29],
+            vec![30, 31, 32, 33, 34],
+        ].into();
+
+        assert_eq!(board.dimensions, [5, 7].into());
+        assert_eq!(*board.get(&[0, 0].into()).unwrap(), 0);
+        assert_eq!(*board.get(&[1, 1].into()).unwrap(), 6);
+        assert_eq!(*board.get(&[4, 2].into()).unwrap(), 14);
+        assert_eq!(*board.get(&[2, 3].into()).unwrap(), 17);
+        assert_eq!(*board.get(&[0, 4].into()).unwrap(), 20);
+        assert_eq!(*board.get(&[4, 6].into()).unwrap(), 34);
     }
 }
