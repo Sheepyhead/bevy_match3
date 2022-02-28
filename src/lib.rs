@@ -1,4 +1,9 @@
-use bevy::{prelude::*, utils::HashMap};
+use std::ops::Range;
+
+use bevy::{
+    prelude::*,
+    utils::{HashMap, HashSet},
+};
 use derive_deref::Deref;
 use queues::{IsQueue, Queue};
 use rand::Rng;
@@ -92,11 +97,11 @@ pub struct Board {
 
 impl std::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let res = (0..self.dimensions.x).map(|x| {
+        let res = (0..self.dimensions.y).map(|y| {
             f.write_fmt(format_args!(
                 "{:?}\n",
-                (0..self.dimensions.y)
-                    .map(|y| self.gems[&[x, y].into()])
+                (0..self.dimensions.x)
+                    .map(|x| self.gems[&[x, y].into()])
                     .collect::<Vec<_>>()
             ))
         });
@@ -170,6 +175,102 @@ impl Board {
         self.gems.insert(*pos2, gem1);
         // TODO: Add check for matches here and swap back if no matches
         Ok(())
+    }
+
+    pub(crate) fn get_matches(&self) -> Matches {
+        let mut matches = self.straight_matches(MatchDirection::Horizontal);
+        matches.append(&mut self.straight_matches(MatchDirection::Vertical));
+        matches
+    }
+
+    fn straight_matches(&self, direction: MatchDirection) -> Matches {
+        let mut matches = Matches::default();
+        let mut current_match = vec![];
+        let mut previous_type = None;
+        for one in match direction {
+            MatchDirection::Horizontal => 0..self.dimensions.x,
+            MatchDirection::Vertical => 0..self.dimensions.y,
+        } {
+            for two in match direction {
+                MatchDirection::Horizontal => 0..self.dimensions.y,
+                MatchDirection::Vertical => 0..self.dimensions.x,
+            } {
+                let pos = [
+                    match direction {
+                        MatchDirection::Horizontal => one,
+                        MatchDirection::Vertical => two,
+                    },
+                    match direction {
+                        MatchDirection::Horizontal => two,
+                        MatchDirection::Vertical => one,
+                    },
+                ]
+                .into();
+
+                let current_type = *self.get(&pos).unwrap();
+                if current_match.is_empty() || previous_type.unwrap() == current_type {
+                    previous_type = Some(current_type);
+                    current_match.push(pos);
+                } else if previous_type.unwrap() != current_type {
+                    match current_match.len() {
+                        0 | 1 | 2 => {}
+                        3 => matches.add(Match::Three(current_match.try_into().unwrap())),
+                        _ => unimplemented!("Match bigger than three found"),
+                    }
+                    current_match = vec![pos];
+                    previous_type = Some(current_type);
+                }
+            }
+            match current_match.len() {
+                0 | 1 | 2 => {}
+                3 => matches.add(Match::Three(current_match.try_into().unwrap())),
+                _ => unimplemented!("Match bigger than three found"),
+            }
+            current_match = vec![];
+            previous_type = None;
+        }
+        matches
+    }
+}
+
+enum MatchDirection {
+    Horizontal,
+    Vertical,
+}
+
+pub enum Match {
+    Three([UVec2; 3]),
+}
+
+#[derive(Default)]
+pub(crate) struct Matches {
+    matches: Vec<Match>,
+}
+
+impl Matches {
+    pub(crate) fn add(&mut self, mat: Match) {
+        self.matches.push(mat)
+    }
+
+    fn append(&mut self, other: &mut Matches) {
+        self.matches.append(&mut other.matches);
+    }
+
+    pub(crate) fn without_duplicates(&self) -> HashSet<UVec2> {
+        self.matches
+            .iter()
+            .flat_map(|mat| match mat {
+                Match::Three(mat) => *mat,
+            })
+            .collect()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.matches.len()
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.matches.is_empty()
     }
 }
 
@@ -252,5 +353,106 @@ mod tests {
                 .unwrap(),
             11
         );
+    }
+
+    #[test]
+    fn check_horizontal_matches() {
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  6,  7,  3,  9],
+            vec![10, 11, 12,  3, 14],
+            vec![15, 16, 12, 18, 19],
+            vec![20, 26, 12, 23, 24],
+            vec![25, 26, 27, 28, 24],
+            vec![30, 26, 32, 33, 24],
+        ].into();
+
+        let matches = board.get_matches();
+
+        assert_eq!(matches.len(), 4);
+
+        let without_duplicates = matches.without_duplicates();
+
+        assert!(without_duplicates.contains(&[2, 2].into()));
+        assert!(without_duplicates.contains(&[2, 3].into()));
+        assert!(without_duplicates.contains(&[2, 4].into()));
+        assert!(without_duplicates.contains(&[3, 0].into()));
+        assert!(without_duplicates.contains(&[3, 1].into()));
+        assert!(without_duplicates.contains(&[3, 2].into()));
+        assert!(without_duplicates.contains(&[1, 4].into()));
+        assert!(without_duplicates.contains(&[1, 5].into()));
+        assert!(without_duplicates.contains(&[1, 6].into()));
+        assert!(without_duplicates.contains(&[4, 4].into()));
+        assert!(without_duplicates.contains(&[4, 5].into()));
+        assert!(without_duplicates.contains(&[4, 6].into()));
+    }
+
+    #[test]
+    fn check_vertical_matches() {
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  3,  3,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![11, 11, 11, 13, 14],
+            vec![15, 16, 17, 18, 19],
+            vec![20, 21, 22, 23, 24],
+            vec![25, 26, 29, 29, 29],
+            vec![30, 30, 30, 33, 34],
+        ].into();
+
+
+        let matches = board.get_matches();
+
+        assert_eq!(matches.len(), 4);
+
+        let without_duplicates = matches.without_duplicates();
+
+        assert!(without_duplicates.contains(&[1, 0].into()));
+        assert!(without_duplicates.contains(&[2, 0].into()));
+        assert!(without_duplicates.contains(&[3, 0].into()));
+        assert!(without_duplicates.contains(&[0, 2].into()));
+        assert!(without_duplicates.contains(&[1, 2].into()));
+        assert!(without_duplicates.contains(&[2, 2].into()));
+        assert!(without_duplicates.contains(&[2, 5].into()));
+        assert!(without_duplicates.contains(&[3, 5].into()));
+        assert!(without_duplicates.contains(&[4, 5].into()));
+        assert!(without_duplicates.contains(&[0, 6].into()));
+        assert!(without_duplicates.contains(&[1, 6].into()));
+        assert!(without_duplicates.contains(&[2, 6].into()));
+    }
+
+    #[test]
+    fn check_both_directions_matches() {
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![11, 11, 11,  8, 14],
+            vec![15, 16, 17,  8, 19],
+            vec![20, 21, 22, 23, 24],
+            vec![20, 26, 29, 29, 29],
+            vec![20, 31, 32, 33, 34],
+        ].into();
+
+
+        let matches = board.get_matches();
+
+        assert_eq!(matches.len(), 4);
+
+        let without_duplicates = matches.without_duplicates();
+
+        assert!(without_duplicates.contains(&[3, 1].into()));
+        assert!(without_duplicates.contains(&[3, 2].into()));
+        assert!(without_duplicates.contains(&[3, 3].into()));
+        assert!(without_duplicates.contains(&[0, 2].into()));
+        assert!(without_duplicates.contains(&[1, 2].into()));
+        assert!(without_duplicates.contains(&[2, 2].into()));
+        assert!(without_duplicates.contains(&[0, 4].into()));
+        assert!(without_duplicates.contains(&[0, 5].into()));
+        assert!(without_duplicates.contains(&[0, 6].into()));
+        assert!(without_duplicates.contains(&[2, 5].into()));
+        assert!(without_duplicates.contains(&[3, 5].into()));
+        assert!(without_duplicates.contains(&[4, 5].into()));
     }
 }
