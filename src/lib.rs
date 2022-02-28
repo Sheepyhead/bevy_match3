@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use bevy::{
     prelude::*,
     utils::{HashMap, HashSet},
@@ -214,7 +212,7 @@ impl Board {
                 } else if previous_type.unwrap() != current_type {
                     match current_match.len() {
                         0 | 1 | 2 => {}
-                        3 => matches.add(Match::Three(current_match.try_into().unwrap())),
+                        3 => matches.add(Match::Straight(current_match.iter().cloned().collect())),
                         _ => unimplemented!("Match bigger than three found"),
                     }
                     current_match = vec![pos];
@@ -223,7 +221,7 @@ impl Board {
             }
             match current_match.len() {
                 0 | 1 | 2 => {}
-                3 => matches.add(Match::Three(current_match.try_into().unwrap())),
+                3 => matches.add(Match::Straight(current_match.iter().cloned().collect())),
                 _ => unimplemented!("Match bigger than three found"),
             }
             current_match = vec![];
@@ -239,7 +237,7 @@ enum MatchDirection {
 }
 
 pub enum Match {
-    Three([UVec2; 3]),
+    Straight(HashSet<UVec2>),
 }
 
 #[derive(Default)]
@@ -260,8 +258,9 @@ impl Matches {
         self.matches
             .iter()
             .flat_map(|mat| match mat {
-                Match::Three(mat) => *mat,
+                Match::Straight(mat) => mat,
             })
+            .cloned()
             .collect()
     }
 
