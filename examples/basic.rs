@@ -1,4 +1,10 @@
-use bevy::{math::Vec3Swizzles, prelude::*, utils::HashMap};
+use bevy::{
+    input::{mouse::MouseButtonInput, ElementState},
+    math::Vec3Swizzles,
+    prelude::*,
+    utils::HashMap,
+};
+use bevy_editor_pls::EditorPlugin;
 use bevy_match3::{board::Board, systems::BoardEvents, Match3Plugin};
 
 const GEM_SIDE_LENGTH: f32 = 50.0;
@@ -11,15 +17,22 @@ fn main() {
             ..WindowDescriptor::default()
         })
         .add_plugins(DefaultPlugins)
+        .add_plugin(EditorPlugin)
+        .insert_resource(Selection::default())
         .add_plugin(Match3Plugin)
         .add_startup_system(setup_graphics)
         .add_system(move_to)
         .add_system(consume_events)
+        .add_system(input)
+        .add_system(visualize_selection)
         .run();
 }
 
 #[derive(Component)]
 struct VisibleBoard(HashMap<UVec2, Entity>);
+
+#[derive(Component)]
+struct MainCamera;
 
 fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServer>) {
     let board_side_length = GEM_SIDE_LENGTH * 10.0;
@@ -28,10 +41,10 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
     let mut camera = OrthographicCameraBundle::new_2d();
     camera.transform = Transform::from_xyz(
         centered_offset_x,
-        centered_offset_y,
+        0.0 - centered_offset_y,
         camera.transform.translation.z,
     );
-    commands.spawn_bundle(camera);
+    commands.spawn_bundle(camera).insert(MainCamera);
 
     let mut gems = HashMap::default();
 
@@ -41,7 +54,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
     board.iter().for_each(|(position, typ)| {
         let transform = Transform::from_xyz(
             position.x as f32 * GEM_SIDE_LENGTH,
-            position.y as f32 * GEM_SIDE_LENGTH,
+            position.y as f32 * -GEM_SIDE_LENGTH,
             0.0,
         );
         let child = commands
@@ -54,6 +67,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
                 texture: ass.load(&map_type_to_path(*typ)),
                 ..SpriteBundle::default()
             })
+            .insert(Name::new(format!("{};{}", position.x, position.y)))
             .id();
         gems.insert(*position, child);
         commands.entity(vis_board).add_child(child);
@@ -98,7 +112,7 @@ fn consume_events(
             bevy_match3::systems::BoardEvent::Swapped(pos1, pos2) => {
                 let gem1 = board.0.get(&pos1).copied().unwrap();
                 let gem2 = board.0.get(&pos2).copied().unwrap();
-                
+
                 commands
                     .entity(gem1)
                     .insert(MoveTo(board_pos_to_world_pos(&pos2)));
@@ -122,4 +136,96 @@ fn board_pos_to_world_pos(pos: &UVec2) -> Vec2 {
         pos.x as f32 * GEM_SIDE_LENGTH,
         pos.y as f32 * GEM_SIDE_LENGTH,
     )
+}
+
+#[derive(Default)]
+struct Selection(Option<Entity>);
+
+fn input(
+    windows: Res<Windows>,
+    mut selection: ResMut<Selection>,
+    mut button_events: EventReader<MouseButtonInput>,
+    camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
+    board: Query<&VisibleBoard>,
+) {
+    for event in button_events.iter() {
+        if let MouseButtonInput {
+            button: MouseButton::Left,
+            state: ElementState::Pressed,
+        } = event
+        {
+            let window = windows.get_primary().unwrap();
+            if let Some(pos) = window.cursor_position() {
+                // The following code is boilerplate from https://bevy-cheatbook.github.io/cookbook/cursor2world.html#2d-games
+                let window_size = Vec2::new(window.width() as f32, window.height() as f32);
+
+                // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
+                let ndc = (pos / window_size) * 2.0 - Vec2::ONE;
+
+                let (camera, camera_transform) = camera.single();
+                // matrix for undoing the projection and camera transform
+                let ndc_to_world =
+                    camera_transform.compute_matrix() * camera.projection_matrix.inverse();
+
+                // use it to convert ndc to world-space coordinates
+                let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
+
+                // reduce it to a 2D value
+                let world_pos: Vec2 = world_pos.truncate();
+
+                // end of borrowed boilerplate
+                println!("Clicked at position {world_pos}");
+                // round down to the gem coordinate
+                let coordinates: IVec2 = (
+                    ((world_pos.x + GEM_SIDE_LENGTH / 2.0) / GEM_SIDE_LENGTH) as i32,
+                    ((GEM_SIDE_LENGTH / 2.0 - world_pos.y) / GEM_SIDE_LENGTH) as i32,
+                )
+                    .into();
+
+                if coordinates.x >= 0 && coordinates.y >= 0 {
+                    println!("Translated to coordinates {coordinates}");
+
+                    selection.0 = board
+                        .single()
+                        .0
+                        .get(&[coordinates.x as u32, coordinates.y as u32].into())
+                        .copied();
+                }
+            }
+        }
+    }
+}
+
+#[derive(Component)]
+struct SelectionRectangle;
+
+fn visualize_selection(
+    mut commands: Commands,
+    selection: Res<Selection>,
+    ass: Res<AssetServer>,
+    g_transforms: Query<&GlobalTransform>,
+    mut rectangle: Query<(Entity, &mut Transform), With<SelectionRectangle>>,
+) {
+    if selection.is_changed() {
+        if let Some(selected_gem) = selection.0 {
+            let transform = g_transforms.get(selected_gem).unwrap();
+            if let Ok((_, mut old_transform)) = rectangle.get_single_mut() {
+                *old_transform = (*transform).into();
+            } else {
+                commands
+                    .spawn_bundle(SpriteBundle {
+                        texture: ass.load("rectangle.png"),
+                        sprite: Sprite {
+                            custom_size: Some([50.0, 50.0].into()),
+                            ..Sprite::default()
+                        },
+                        transform: (*transform).into(),
+                        ..SpriteBundle::default()
+                    })
+                    .insert(SelectionRectangle);
+            }
+        } else if let Ok((entity, _)) = rectangle.get_single_mut() {
+            commands.entity(entity).despawn();
+        }
+    }
 }
