@@ -5,7 +5,7 @@ use systems::*;
 
 pub mod board;
 pub mod mat;
-mod systems;
+pub mod systems;
 
 pub struct Match3Plugin;
 
