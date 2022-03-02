@@ -62,6 +62,10 @@ impl Board {
         self.gems.get(pos)
     }
 
+    pub fn iter(&self) -> std::collections::hash_map::Iter<UVec2, u32> {
+        self.gems.iter()
+    }
+
     pub(crate) fn remove(&mut self, pos: &UVec2) {
         self.gems.remove(pos);
     }
