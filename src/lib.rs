@@ -30,6 +30,7 @@ impl Plugin for Match3Plugin {
         app.insert_resource(Board {
             dimensions: board_dimensions,
             gems,
+            types: (0..gem_types).collect(),
         })
         .insert_resource(BoardCommands)
         .insert_resource(BoardEvents)
@@ -161,5 +162,134 @@ mod tests {
                 .unwrap(),
             12
         );
+    }
+
+    #[test]
+    fn pop_gem() {
+        // setup
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![10, 11, 12, 13, 14],
+            vec![15, 16, 17, 18, 19],
+            vec![20, 21, 22, 23, 24],
+            vec![25, 26, 27, 28, 29],
+            vec![30, 31, 32, 33, 34],
+        ].into();
+
+        let mut queue = Queue::default();
+        queue.add(BoardCommand::Pop(vec![[1, 4].into()])).unwrap();
+
+        let mut update_stage = SystemStage::parallel();
+        update_stage.add_system(read_commands);
+
+        let mut world = World::default();
+        world.insert_resource(board.clone());
+        world.insert_resource(BoardCommands(queue));
+        world.insert_resource(BoardEvents::default());
+
+        // run
+        update_stage.run(&mut world);
+
+        // check
+        let new_board = world.get_resource::<Board>().unwrap();
+        assert_ne!(board, *new_board);
+        assert_eq!(*new_board.get(&[1, 4].into()).unwrap(), 16);
+        assert_eq!(*new_board.get(&[1, 3].into()).unwrap(), 11);
+        assert_eq!(*new_board.get(&[1, 2].into()).unwrap(), 6);
+        assert_eq!(*new_board.get(&[1, 1].into()).unwrap(), 1);
+        assert!(new_board.get(&[1, 0].into()).is_some());
+    }
+
+    #[test]
+    fn pop_gems_vertical() {
+        // setup
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![10, 11, 12, 13, 14],
+            vec![15, 16, 17, 18, 19],
+            vec![20, 21, 22, 23, 24],
+            vec![25, 26, 27, 28, 29],
+            vec![30, 31, 32, 33, 34],
+        ].into();
+
+        let mut queue = Queue::default();
+        queue
+            .add(BoardCommand::Pop(vec![
+                [3, 6].into(),
+                [3, 5].into(),
+                [3, 4].into(),
+            ]))
+            .unwrap();
+
+        let mut update_stage = SystemStage::parallel();
+        update_stage.add_system(read_commands);
+
+        let mut world = World::default();
+        world.insert_resource(board.clone());
+        world.insert_resource(BoardCommands(queue));
+        world.insert_resource(BoardEvents::default());
+
+        // run
+        update_stage.run(&mut world);
+
+        // check
+        let new_board = world.get_resource::<Board>().unwrap();
+        assert_ne!(board, *new_board);
+        assert_eq!(*new_board.get(&[3, 6].into()).unwrap(), 18);
+        assert_eq!(*new_board.get(&[3, 5].into()).unwrap(), 13);
+        assert_eq!(*new_board.get(&[3, 4].into()).unwrap(), 8);
+        assert_eq!(*new_board.get(&[3, 3].into()).unwrap(), 3);
+        assert!(new_board.get(&[3, 0].into()).is_some());
+        assert!(new_board.get(&[3, 1].into()).is_some());
+        assert!(new_board.get(&[3, 2].into()).is_some());
+    }
+
+    #[test]
+    fn pop_gems_horizontal() {
+        // setup
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![10, 11, 12, 13, 14],
+            vec![15, 16, 17, 18, 19],
+            vec![20, 21, 22, 23, 24],
+            vec![25, 26, 27, 28, 29],
+            vec![30, 31, 32, 33, 34],
+        ].into();
+
+        let mut queue = Queue::default();
+        queue
+            .add(BoardCommand::Pop(vec![
+                [0, 5].into(),
+                [1, 5].into(),
+                [2, 5].into(),
+            ]))
+            .unwrap();
+
+        let mut update_stage = SystemStage::parallel();
+        update_stage.add_system(read_commands);
+
+        let mut world = World::default();
+        world.insert_resource(board.clone());
+        world.insert_resource(BoardCommands(queue));
+        world.insert_resource(BoardEvents::default());
+
+        // run
+        update_stage.run(&mut world);
+
+        // check
+        let new_board = world.get_resource::<Board>().unwrap();
+        assert_ne!(board, *new_board);
+        assert_eq!(*new_board.get(&[0, 5].into()).unwrap(), 20);
+        assert_eq!(*new_board.get(&[1, 5].into()).unwrap(), 21);
+        assert_eq!(*new_board.get(&[2, 5].into()).unwrap(), 22);
+        assert!(new_board.get(&[0, 0].into()).is_some());
+        assert!(new_board.get(&[1, 0].into()).is_some());
+        assert!(new_board.get(&[2, 0].into()).is_some());
     }
 }

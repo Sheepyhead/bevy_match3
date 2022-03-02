@@ -2,8 +2,7 @@ use bevy::{
     prelude::*,
     utils::{HashMap, HashSet},
 };
-use derive_deref::Deref;
-use queues::{IsQueue, Queue};
+use rand::prelude::IteratorRandom;
 
 use crate::mat::*;
 
@@ -11,6 +10,7 @@ use crate::mat::*;
 pub struct Board {
     pub(crate) dimensions: UVec2,
     pub(crate) gems: HashMap<UVec2, u32>,
+    pub(crate) types: HashSet<u32>,
 }
 
 impl std::fmt::Display for Board {
@@ -38,10 +38,12 @@ impl From<Vec<Vec<u32>>> for Board {
         let mut gems = HashMap::default();
         let mut width = 0;
         let mut height = 0;
+        let mut types = HashSet::default();
         rows.iter().enumerate().for_each(|(y, row)| {
             height += 1;
             row.iter().enumerate().for_each(|(x, gem)| {
                 gems.insert([x as u32, y as u32].into(), *gem);
+                types.insert(*gem);
                 if height == 1 {
                     width += 1;
                 }
@@ -50,6 +52,7 @@ impl From<Vec<Vec<u32>>> for Board {
         Board {
             gems,
             dimensions: [width, height].into(),
+            types,
         }
     }
 }
@@ -86,6 +89,26 @@ impl Board {
             }
         }
         moves
+    }
+
+    pub(crate) fn fill(&mut self) -> HashSet<(UVec2, u32)> {
+        let mut drops = HashSet::default();
+        for x in 0..self.dimensions.x {
+            for y in 0..self.dimensions.y {
+                let pos = [x, y];
+                if self.get(&pos.into()).is_none() {
+                    let new_type = self
+                        .types
+                        .iter()
+                        .choose(&mut rand::thread_rng())
+                        .copied()
+                        .unwrap();
+                    self.insert(pos.into(), new_type);
+                    drops.insert((pos.into(), new_type));
+                }
+            }
+        }
+        drops
     }
 
     pub(crate) fn swap(&mut self, pos1: &UVec2, pos2: &UVec2) -> Result<(), &str> {
@@ -154,50 +177,12 @@ impl Board {
             match current_match.len() {
                 0 | 1 | 2 => {}
                 _ => matches.add(Match::Straight(current_match.iter().cloned().collect())),
-           }
+            }
             current_match = vec![];
             previous_type = None;
         }
         matches
     }
-}
-
-#[derive(Deref, Default)]
-pub struct BoardCommands(pub(crate) Queue<BoardCommand>);
-
-impl BoardCommands {
-    pub fn push(&mut self, command: BoardCommand) -> Result<(), &str> {
-        self.0.add(command).map(|_| ())
-    }
-
-    pub(crate) fn pop(&mut self) -> Result<BoardCommand, &str> {
-        self.0.remove()
-    }
-}
-
-#[derive(Clone)]
-pub enum BoardCommand {
-    Swap(UVec2, UVec2),
-    Pop(Vec<UVec2>),
-}
-
-impl BoardEvents {
-    pub(crate) fn push(&mut self, command: BoardEvent) -> Result<(), &str> {
-        self.0.add(command).map(|_| ())
-    }
-
-    pub fn pop(&mut self) -> Result<BoardEvent, &str> {
-        self.0.remove()
-    }
-}
-
-#[derive(Deref, Default)]
-pub struct BoardEvents(pub(crate) Queue<BoardEvent>);
-
-#[derive(Clone, Copy)]
-pub enum BoardEvent {
-    Swapped(UVec2, UVec2),
-    FailedSwap(UVec2, UVec2),
 }
 
 #[cfg(test)]
@@ -325,7 +310,6 @@ mod tests {
         assert!(without_duplicates.contains(&[4, 5].into()));
     }
 
-    
     #[test]
     fn check_bigger_matches() {
         #[rustfmt::skip]
@@ -351,7 +335,6 @@ mod tests {
         assert!(without_duplicates.contains(&[3, 3].into()));
         assert!(without_duplicates.contains(&[4, 3].into()));
     }
-
 
     #[test]
     fn pop_gem() {
