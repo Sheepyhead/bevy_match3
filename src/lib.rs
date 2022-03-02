@@ -32,8 +32,8 @@ impl Plugin for Match3Plugin {
             gems,
             types: (0..gem_types).collect(),
         })
-        .insert_resource(BoardCommands)
-        .insert_resource(BoardEvents)
+        .insert_resource(BoardCommands::default())
+        .insert_resource(BoardEvents::default())
         .add_system(read_commands);
     }
 }
