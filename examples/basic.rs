@@ -5,7 +5,11 @@ use bevy::{
     utils::HashMap,
 };
 use bevy_editor_pls::EditorPlugin;
-use bevy_match3::{board::Board, systems::BoardEvents, Match3Plugin};
+use bevy_match3::{
+    board::Board,
+    systems::{BoardCommand, BoardCommands, BoardEvents},
+    Match3Plugin,
+};
 
 const GEM_SIDE_LENGTH: f32 = 50.0;
 
@@ -25,6 +29,7 @@ fn main() {
         .add_system(consume_events)
         .add_system(input)
         .add_system(visualize_selection)
+        .add_system(control)
         .run();
 }
 
@@ -93,10 +98,11 @@ fn move_to(
             println!("{entity:?} reached destination!");
             commands.entity(entity).remove::<MoveTo>();
         } else {
-            let mut movement = transform.translation.xy() - *move_to;
-            movement =
-                (movement.normalize() * time.delta_seconds()).clamp_length_max(movement.length());
-            transform.translation = movement.extend(transform.translation.z);
+            let mut movement = *move_to - transform.translation.xy();
+            movement = // Multiplying the move by GEM_SIDE_LENGTH as well as delta seconds means the animation takes exactly 1 second
+                (movement.normalize() * time.delta_seconds() * GEM_SIDE_LENGTH).clamp_length_max(movement.length());
+            let movement = movement.extend(transform.translation.z);
+            transform.translation += movement;
         }
     }
 }
@@ -132,13 +138,15 @@ fn consume_events(
 }
 
 fn board_pos_to_world_pos(pos: &UVec2) -> Vec2 {
-    Vec2::new(
+    let new_pos = Vec2::new(
         pos.x as f32 * GEM_SIDE_LENGTH,
-        pos.y as f32 * GEM_SIDE_LENGTH,
-    )
+        -(pos.y as f32) * GEM_SIDE_LENGTH,
+    );
+    println!("Translated {pos} to {new_pos}");
+    new_pos
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 struct Selection(Option<Entity>);
 
 fn input(
@@ -226,6 +234,37 @@ fn visualize_selection(
             }
         } else if let Ok((entity, _)) = rectangle.get_single_mut() {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn control(
+    mut board_commands: ResMut<BoardCommands>,
+    mut selection: ResMut<Selection>,
+    mut last_selection: Local<Selection>,
+    transforms: Query<&Transform>,
+) {
+    if selection.is_changed() {
+        if let Some(selected_gem) = selection.0 {
+            if let Some(last_selected_gem) = last_selection.0 {
+                let selected_pos = transforms.get(selected_gem).unwrap().translation.xy() / 50.0;
+                let last_selected_pos =
+                    transforms.get(last_selected_gem).unwrap().translation.xy() / 50.0;
+
+                board_commands
+                    .push(BoardCommand::Swap(
+                        [selected_pos.x as u32, -selected_pos.y as u32].into(),
+                        [last_selected_pos.x as u32, -last_selected_pos.y as u32].into(),
+                    ))
+                    .map_err(|err| println!("{err}"))
+                    .unwrap();
+                selection.0 = None;
+                last_selection.0 = None;
+            } else {
+                *last_selection = *selection;
+            }
+        } else {
+            last_selection.0 = None
         }
     }
 }
