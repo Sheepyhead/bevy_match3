@@ -145,8 +145,7 @@ impl Board {
                 } else if previous_type.unwrap() != current_type {
                     match current_match.len() {
                         0 | 1 | 2 => {}
-                        3 => matches.add(Match::Straight(current_match.iter().cloned().collect())),
-                        _ => unimplemented!("Match bigger than three found"),
+                        _ => matches.add(Match::Straight(current_match.iter().cloned().collect())),
                     }
                     current_match = vec![pos];
                     previous_type = Some(current_type);
@@ -325,6 +324,34 @@ mod tests {
         assert!(without_duplicates.contains(&[3, 5].into()));
         assert!(without_duplicates.contains(&[4, 5].into()));
     }
+
+    
+    #[test]
+    fn check_bigger_matches() {
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![10, 11, 12, 13, 14],
+            vec![18, 18, 18, 18, 18],
+            vec![20, 21, 22, 23, 24],
+            vec![25, 26, 27, 28, 29],
+            vec![30, 31, 32, 33, 34],
+        ].into();
+
+        let matches = board.get_matches();
+
+        assert_eq!(matches.len(), 1);
+
+        let without_duplicates = matches.without_duplicates();
+
+        assert!(without_duplicates.contains(&[0, 3].into()));
+        assert!(without_duplicates.contains(&[1, 3].into()));
+        assert!(without_duplicates.contains(&[2, 3].into()));
+        assert!(without_duplicates.contains(&[3, 3].into()));
+        assert!(without_duplicates.contains(&[4, 3].into()));
+    }
+
 
     #[test]
     fn pop_gem() {
