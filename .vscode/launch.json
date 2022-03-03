@@ -22,8 +22,8 @@
       "args": [],
       "cwd": "${workspaceFolder}",
       "env": {
-        "CARGO_MANIFEST_DIR": "${workspaceFolder}",
-        "RUST_BACKTRACE": "full"
+        "CARGO_MANIFEST_DIR": "${workspaceFolder}"
+        // "RUST_BACKTRACE": "full"
       }
     },
     {

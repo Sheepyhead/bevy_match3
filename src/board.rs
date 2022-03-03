@@ -67,6 +67,8 @@ impl Board {
     }
 
     pub(crate) fn remove(&mut self, pos: &UVec2) {
+        println!("[ENGINE] Removed at {pos:?}");
+
         self.gems.remove(pos);
     }
 
@@ -84,6 +86,9 @@ impl Board {
                         if let Some(typ) = self.get(&[x, above].into()).cloned() {
                             let new_pos = [x, y - offset];
                             moves.insert(([x, above].into(), new_pos.into()));
+                            println!(
+                                "[ENGINE] Removed from {x},{above} and inserted at {new_pos:?}"
+                            );
                             self.remove(&[x, above].into());
                             self.insert(new_pos.into(), typ);
                             offset += 1;
@@ -101,6 +106,8 @@ impl Board {
             for y in 0..self.dimensions.y {
                 let pos = [x, y];
                 if self.get(&pos.into()).is_none() {
+                    println!("[ENGINE] Spawned at {pos:?}");
+
                     let new_type = self
                         .types
                         .iter()

@@ -7,8 +7,8 @@ use bevy::{
 use bevy_editor_pls::EditorPlugin;
 use bevy_match3::{
     board::Board,
-    systems::{BoardCommand, BoardCommands, BoardEvents},
-    Match3Plugin,
+    systems::{BoardCommand, BoardCommands, BoardEvent, BoardEvents},
+    Match3Config, Match3Plugin,
 };
 
 const GEM_SIDE_LENGTH: f32 = 50.0;
@@ -23,6 +23,10 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(EditorPlugin)
         .insert_resource(Selection::default())
+        .insert_resource(Match3Config {
+            board_dimensions: [5, 5].into(),
+            ..Match3Config::default()
+        })
         .add_plugin(Match3Plugin)
         .add_startup_system(setup_graphics)
         .add_system(move_to)
@@ -30,10 +34,11 @@ fn main() {
         .add_system(input)
         .add_system(visualize_selection)
         .add_system(control)
+        .add_system(animate_once)
         .run();
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 struct VisibleBoard(HashMap<UVec2, Entity>);
 
 #[derive(Component)]
@@ -95,12 +100,11 @@ fn move_to(
 ) {
     for (entity, mut transform, MoveTo(move_to)) in moves.iter_mut() {
         if transform.translation == Vec3::new(move_to.x, move_to.y, transform.translation.z) {
-            println!("{entity:?} reached destination!");
             commands.entity(entity).remove::<MoveTo>();
         } else {
             let mut movement = *move_to - transform.translation.xy();
             movement = // Multiplying the move by GEM_SIDE_LENGTH as well as delta seconds means the animation takes exactly 1 second
-                (movement.normalize() * time.delta_seconds() * GEM_SIDE_LENGTH).clamp_length_max(movement.length());
+                (movement.normalize() * time.delta_seconds() * GEM_SIDE_LENGTH * 5.0).clamp_length_max(movement.length());
             let movement = movement.extend(transform.translation.z);
             transform.translation += movement;
         }
@@ -110,40 +114,105 @@ fn move_to(
 fn consume_events(
     mut commands: Commands,
     mut events: ResMut<BoardEvents>,
-    mut board: Query<&mut VisibleBoard>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut board_commands: ResMut<BoardCommands>,
+    ass: Res<AssetServer>,
+    mut board: Query<(Entity, &mut VisibleBoard)>,
+    animations: Query<(), With<MoveTo>>,
 ) {
-    while let Ok(event) = events.pop() {
-        let mut board = board.single_mut();
-        match event {
-            bevy_match3::systems::BoardEvent::Swapped(pos1, pos2) => {
-                let gem1 = board.0.get(&pos1).copied().unwrap();
-                let gem2 = board.0.get(&pos2).copied().unwrap();
+    if animations.iter().count() == 0 {
+        if let Ok(event) = events.pop() {
+            let (board_entity, mut board) = board.single_mut();
+            match event {
+                BoardEvent::Swapped(pos1, pos2) => {
+                    let gem1 = board.0.get(&pos1).copied().unwrap();
+                    let gem2 = board.0.get(&pos2).copied().unwrap();
+                    println!("Swapping gem {gem1:?} in {pos1} with gem {gem2:?} in {pos2}");
 
-                commands
-                    .entity(gem1)
-                    .insert(MoveTo(board_pos_to_world_pos(&pos2)));
+                    commands
+                        .entity(gem1)
+                        .insert(MoveTo(board_pos_to_world_pos(&pos2)));
 
-                commands
-                    .entity(gem2)
-                    .insert(MoveTo(board_pos_to_world_pos(&pos1)));
+                    commands
+                        .entity(gem2)
+                        .insert(MoveTo(board_pos_to_world_pos(&pos1)));
 
-                board.0.insert(pos2, gem1);
-                board.0.insert(pos1, gem2);
-            }
-            _ => {
-                println!("Received unimplemented event")
+                    board.0.insert(pos2, gem1);
+                    board.0.insert(pos1, gem2);
+                }
+                BoardEvent::Popped(pos) => {
+                    println!("Removing gem from {pos}");
+                    let gem = board.0.get(&pos).copied().unwrap();
+                    println!("Removing {gem:?}");
+                    board.0.remove(&pos);
+                    commands.entity(gem).despawn_recursive();
+                    spawn_explosion(
+                        &ass,
+                        &mut texture_atlases,
+                        &mut commands,
+                        &board_pos_to_world_pos(&pos),
+                    );
+                }
+                BoardEvent::Matched(matches) => {
+                    board_commands
+                        .push(BoardCommand::Pop(
+                            matches.without_duplicates().iter().copied().collect(),
+                        ))
+                        .unwrap();
+                }
+                BoardEvent::Dropped(drops) => {
+                    println!("Processing new drop");
+                    // Need to keep a buffered board clone because we read and write at the same time
+                    let mut new_board = board.clone();
+                    for (from, to) in drops {
+                        println!("Dropping from {from} to {to}");
+                        let gem = board.0.get(&from).copied().unwrap();
+                        println!("Dropping {gem:?}");
+                        new_board.0.insert(to, gem);
+                        new_board.0.remove(&from);
+                        commands
+                            .entity(gem)
+                            .insert(MoveTo(board_pos_to_world_pos(&to)));
+                    }
+                    // And copy the buffer to the resource
+                    *board = new_board;
+                }
+                BoardEvent::Spawned(spawns) => {
+                    let mut new_board = board.clone();
+
+                    for (pos, typ) in spawns {
+                        let world_pos = board_pos_to_world_pos(&pos);
+                        let gem = commands
+                            .spawn_bundle(SpriteBundle {
+                                texture: ass.load(&map_type_to_path(typ)),
+                                transform: Transform::from_xyz(world_pos.x, 200.0, 0.0),
+                                sprite: Sprite {
+                                    custom_size: Some([50.0, 50.0].into()),
+                                    ..Sprite::default()
+                                },
+                                ..SpriteBundle::default()
+                            })
+                            .insert(MoveTo(world_pos))
+                            .id();
+                        println!("Spawning gem {gem:?} in {pos}");
+                        new_board.0.insert(pos, gem);
+                        commands.entity(board_entity).add_child(gem);
+                    }
+                    *board = new_board;
+                }
+                _ => {
+                    println!("Received unimplemented event")
+                }
             }
         }
     }
 }
 
 fn board_pos_to_world_pos(pos: &UVec2) -> Vec2 {
-    let new_pos = Vec2::new(
+    Vec2::new(
         pos.x as f32 * GEM_SIDE_LENGTH,
         -(pos.y as f32) * GEM_SIDE_LENGTH,
-    );
-    println!("Translated {pos} to {new_pos}");
-    new_pos
+    )
 }
 
 #[derive(Default, Clone, Copy)]
@@ -182,7 +251,6 @@ fn input(
                 let world_pos: Vec2 = world_pos.truncate();
 
                 // end of borrowed boilerplate
-                println!("Clicked at position {world_pos}");
                 // round down to the gem coordinate
                 let coordinates: IVec2 = (
                     ((world_pos.x + GEM_SIDE_LENGTH / 2.0) / GEM_SIDE_LENGTH) as i32,
@@ -191,8 +259,6 @@ fn input(
                     .into();
 
                 if coordinates.x >= 0 && coordinates.y >= 0 {
-                    println!("Translated to coordinates {coordinates}");
-
                     selection.0 = board
                         .single()
                         .0
@@ -267,4 +333,49 @@ fn control(
             last_selection.0 = None
         }
     }
+}
+
+#[derive(Component)]
+struct AnimationTimer(Timer);
+
+fn animate_once(
+    mut commands: Commands,
+    time: Res<Time>,
+    texture_atlases: Res<Assets<TextureAtlas>>,
+    mut timers: Query<(
+        Entity,
+        &mut AnimationTimer,
+        &mut TextureAtlasSprite,
+        &Handle<TextureAtlas>,
+    )>,
+) {
+    for (entity, mut timer, mut sprite, texture_atlas_handle) in timers.iter_mut() {
+        timer.0.tick(time.delta());
+        if timer.0.just_finished() {
+            let texture_atlas = texture_atlases.get(texture_atlas_handle).unwrap();
+            if sprite.index == 3 {
+                commands.entity(entity).despawn_recursive();
+            } else {
+                sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+            }
+        }
+    }
+}
+
+fn spawn_explosion(
+    ass: &AssetServer,
+    texture_atlases: &mut Assets<TextureAtlas>,
+    commands: &mut Commands,
+    pos: &Vec2,
+) {
+    let texture_handle = ass.load("explosion.png");
+    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(49.0, 50.0), 4, 1);
+    let texture_atlas_handle = texture_atlases.add(texture_atlas);
+    commands
+        .spawn_bundle(SpriteSheetBundle {
+            texture_atlas: texture_atlas_handle,
+            transform: Transform::from_translation(pos.extend(0.0)),
+            ..SpriteSheetBundle::default()
+        })
+        .insert(AnimationTimer(Timer::from_seconds(0.1, true)));
 }

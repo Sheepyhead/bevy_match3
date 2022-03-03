@@ -5,12 +5,13 @@ pub(crate) enum MatchDirection {
     Vertical,
 }
 
+#[derive(Clone)]
 pub enum Match {
     Straight(HashSet<UVec2>),
 }
 
-#[derive(Default)]
-pub(crate) struct Matches {
+#[derive(Default, Clone)]
+pub struct Matches {
     matches: Vec<Match>,
 }
 
@@ -23,7 +24,7 @@ impl Matches {
         self.matches.append(&mut other.matches);
     }
 
-    pub(crate) fn without_duplicates(&self) -> HashSet<UVec2> {
+    pub fn without_duplicates(&self) -> HashSet<UVec2> {
         self.matches
             .iter()
             .flat_map(|mat| match mat {
