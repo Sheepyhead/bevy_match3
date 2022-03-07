@@ -14,7 +14,7 @@ mod board;
 mod mat;
 mod systems;
 
-/// Use `bevy_match3::*;` to import common structs and plugins
+/// Use `bevy_match3::prelude::*;` to import common structs and plugins
 pub mod prelude {
     pub use crate::board::*;
     pub use crate::mat::*;
