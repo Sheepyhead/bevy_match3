@@ -4,11 +4,7 @@ use bevy::{
     prelude::*,
     utils::HashMap,
 };
-use bevy_match3::{
-    board::Board,
-    systems::{BoardCommand, BoardCommands, BoardEvent, BoardEvents},
-    Match3Plugin,
-};
+use bevy_match3::prelude::*;
 
 const GEM_SIDE_LENGTH: f32 = 50.0;
 
@@ -157,7 +153,7 @@ fn consume_events(
                 BoardEvent::Dropped(drops) => {
                     // Need to keep a buffered board clone because we read and write at the same time
                     let mut new_board = board.clone();
-                    for bevy_match3::systems::Drop { from, to } in drops {
+                    for bevy_match3::prelude::Drop { from, to } in drops {
                         let gem = board.0.get(&from).copied().unwrap();
                         new_board.0.insert(to, gem);
                         new_board.0.remove(&from);
