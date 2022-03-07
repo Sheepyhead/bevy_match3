@@ -187,11 +187,31 @@ impl Board {
         }
         matches
     }
+
+    pub(crate) fn clear_matches(&mut self) {
+        loop {
+            let matches = self.get_matches();
+            if matches.is_empty() {
+                break;
+            }
+            for mat in matches.matches.iter() {
+                match mat {
+                    Match::Straight(gems) => {
+                        for gem in gems {
+                            self.remove(gem);
+                        }
+                    }
+                }
+            }
+            self.drop();
+            self.fill();
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Board, mat::Matches};
+    use crate::{mat::Matches, Board};
 
     impl Matches {
         fn len(&self) -> usize {

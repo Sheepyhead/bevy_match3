@@ -20,6 +20,10 @@ impl Plugin for Match3Plugin {
             .copied()
             .unwrap_or_default();
 
+        if gem_types < 3 {
+            panic!("Cannot generate board with fewer than 3 different gem types");
+        }
+        
         let mut gems = HashMap::default();
         (0..board_dimensions.x).for_each(|x| {
             (0..board_dimensions.y).for_each(|y| {
@@ -27,16 +31,18 @@ impl Plugin for Match3Plugin {
             })
         });
 
-        let board = Board {
+        let mut board = Board {
             dimensions: board_dimensions,
             gems,
             types: (0..gem_types).collect(),
         };
 
+        board.clear_matches();
+
         app.insert_resource(board)
-        .insert_resource(BoardCommands::default())
-        .insert_resource(BoardEvents::default())
-        .add_system(read_commands);
+            .insert_resource(BoardCommands::default())
+            .insert_resource(BoardEvents::default())
+            .add_system(read_commands);
     }
 }
 
