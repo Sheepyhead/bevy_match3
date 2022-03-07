@@ -6,6 +6,7 @@ use rand::prelude::IteratorRandom;
 
 use crate::mat::*;
 
+/// The main struct representing the logical match 3 board
 #[derive(PartialEq, Debug, Clone)]
 pub struct Board {
     pub(crate) dimensions: UVec2,
@@ -58,10 +59,12 @@ impl From<Vec<Vec<u32>>> for Board {
 }
 
 impl Board {
+    /// Returns a reference to the gem type at the given position.
     pub fn get(&self, pos: &UVec2) -> Option<&u32> {
         self.gems.get(pos)
     }
 
+    /// Returns an iterator over the kvps in the board
     pub fn iter(&self) -> std::collections::hash_map::Iter<UVec2, u32> {
         self.gems.iter()
     }

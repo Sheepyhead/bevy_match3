@@ -1,12 +1,28 @@
+//! # ``bevy_match3``
+//!
+//! An implementation of the logical and algorithmic side of match 3 games
+//!
+
+#![deny(missing_docs, clippy::doc_markdown)]
+
 use bevy::{prelude::*, utils::HashMap};
 use board::*;
 use rand::Rng;
 use systems::*;
 
-pub mod board;
-pub mod mat;
-pub mod systems;
+mod board;
+mod mat;
+mod systems;
 
+/// Use `bevy_match3::*;` to import common structs and plugins
+pub mod prelude {
+    pub use crate::board::*;
+    pub use crate::mat::*;
+    pub use crate::systems::*;
+    pub use crate::Match3Plugin;
+}
+
+/// The central logic plugin of the ``bevy_match3`` crate
 pub struct Match3Plugin;
 
 impl Plugin for Match3Plugin {
@@ -23,7 +39,7 @@ impl Plugin for Match3Plugin {
         if gem_types < 3 {
             panic!("Cannot generate board with fewer than 3 different gem types");
         }
-        
+
         let mut gems = HashMap::default();
         (0..board_dimensions.x).for_each(|x| {
             (0..board_dimensions.y).for_each(|y| {
@@ -46,9 +62,26 @@ impl Plugin for Match3Plugin {
     }
 }
 
+/// An optional config for the match3 board. This should be inserted as a resource before the `Match3Plugin`
+/// 
+/// # Examples
+/// 
+/// ```
+/// use bevy_match3::prelude::*;
+/// 
+/// App::new()
+///     .insert_resource(Match3Config {
+///         gem_types: 5,
+///         board_dimensions: [10, 10].into(),
+///     })
+///     .add_plugin(Match3Plugin)
+///     .run();
+/// ```
 #[derive(Clone, Copy)]
 pub struct Match3Config {
+    /// The number of different gem types the board can spawn
     pub gem_types: u32,
+    /// The rectangular dimensions of the board
     pub board_dimensions: UVec2,
 }
 

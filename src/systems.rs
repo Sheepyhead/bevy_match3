@@ -63,10 +63,27 @@ pub(crate) fn read_commands(
     }
 }
 
+/// The resource used to send commands to the logic board
 #[derive(Default)]
 pub struct BoardCommands(pub(crate) Queue<BoardCommand>);
 
 impl BoardCommands {
+    /// Pushes a new command onto the command queue
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn example_system(
+    ///     mut board_commands: ResMut<BoardCommands>,
+    /// ) {
+    ///     board_commands.push(BoardCommand::Swap(
+    ///         [0, 0].into(),
+    ///         [0, 1].into(),
+    ///     ))
+    ///     .unwrap();
+    /// }
+    /// ```
     pub fn push(&mut self, command: BoardCommand) -> Result<(), &str> {
         self.0.add(command).map(|_| ())
     }
@@ -76,9 +93,12 @@ impl BoardCommands {
     }
 }
 
+/// The commands that can be issued to the logic board
 #[derive(Clone)]
 pub enum BoardCommand {
+    /// Attempts to swap two gems, succeeds only if the swap would cause a match
     Swap(UVec2, UVec2),
+    /// Pops all gems at the given positions, causing drops, spawns, and may cause matches to occur
     Pop(Vec<UVec2>),
 }
 
@@ -87,27 +107,44 @@ impl BoardEvents {
         self.0.add(command).map(|_| ())
     }
 
+    /// Removes an event from the event queue
     pub fn pop(&mut self) -> Result<BoardEvent, &str> {
         self.0.remove()
     }
 }
 
+/// The resource used to receive information about changes in the logic board
 #[derive(Default)]
 pub struct BoardEvents(pub(crate) Queue<BoardEvent>);
 
+/// The events that indicate a possible change in the logic board
 #[derive(Clone)]
 pub enum BoardEvent {
+    /// Two gems have been successfully swapped, usually as a result of a ``BoardCommand::Swap`` command
     Swapped(UVec2, UVec2),
+    /// Two gems have failed to swap, this means no changes have been made to the logic board. 
+    /// 
+    /// This is usually as a result of a ``BoardCommand::Swap`` command
     FailedSwap(UVec2, UVec2),
+    /// One or more gems have dropped from a higher position to a lower position, or in other words their
+    /// position has changed from a lower y-value to a higher y-value with no change in x-value.
+    /// These are ordered so that for each column the drop with the highest y-value on its from coordinate
+    /// comes first, since we want to avoid overwriting other gems.
     Dropped(Vec<Drop>),
+    /// A gem has been popped. This is usually as a result of a ``BoardCommand::Pop`` command
     Popped(UVec2),
+    /// Gems have been spawned. This usually happens after a ``BoardEvent::Popped`` event
     Spawned(Vec<(UVec2, u32)>),
+    /// Matches have been detected.
     Matched(Matches),
 }
 
+/// Represents a gem dropping from a higher to a lower position
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Drop {
+    /// The position the gem used to occupy
     pub from: UVec2,
+    /// The new position the gem has dropped to
     pub to: UVec2,
 }
 
