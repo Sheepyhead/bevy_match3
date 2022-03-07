@@ -26,7 +26,7 @@
 - [ ] Customizing various aspects like letting swaps succeed always and allowing matches at board creation
 
 ## Examples
-For now there is one example of all features at [`scene.rs`](examples/scene.rs)
+For now there is one example of all features at [`scene.rs`](examples/basic.rs)
 
 ## License
 Note that this project is licensed under the [`Anti-Capitalist Software License`](https://anticapitalist.software/). If this proves a major obstacle for adoption I may consider a more conventional license, I would just like to avoid this library being flipped by the likes of King and similar.
