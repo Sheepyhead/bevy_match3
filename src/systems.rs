@@ -1,7 +1,7 @@
-use std::fmt;
 use crate::{board::*, mat::Matches};
 use bevy::prelude::*;
 use queues::{IsQueue, Queue};
+use std::fmt;
 
 pub(crate) fn read_commands(
     mut commands: ResMut<BoardCommands>,
@@ -49,6 +49,14 @@ pub(crate) fn read_commands(
                         .push(BoardEvent::Spawned(board.fill().iter().copied().collect()))
                         .map_err(|err| println!("{err}"))
                         .unwrap();
+
+                    let matches = board.get_matches();
+                    if !matches.is_empty() {
+                        events
+                            .push(BoardEvent::Matched(matches))
+                            .map_err(|err| println!("{err}"))
+                            .unwrap();
+                    }
                 }
             }
         }
@@ -84,7 +92,7 @@ impl BoardEvents {
     }
 }
 
-#[derive( Default)]
+#[derive(Default)]
 pub struct BoardEvents(pub(crate) Queue<BoardEvent>);
 
 #[derive(Clone)]
