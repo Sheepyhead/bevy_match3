@@ -11,5 +11,3 @@ description = "A logic library for quickly adding a match-3 system to any bevy p
 bevy = "0.6.1"
 rand = "0.8.5"
 queues = "1.1.0"
-derive_deref = "1.1.1"
-bevy_editor_pls = {git = "https://github.com/jakobhellermann/bevy_editor_pls", rev = "532a929"}

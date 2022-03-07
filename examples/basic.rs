@@ -4,11 +4,10 @@ use bevy::{
     prelude::*,
     utils::HashMap,
 };
-use bevy_editor_pls::EditorPlugin;
 use bevy_match3::{
     board::Board,
     systems::{BoardCommand, BoardCommands, BoardEvent, BoardEvents},
-    Match3Config, Match3Plugin,
+    Match3Plugin,
 };
 
 const GEM_SIDE_LENGTH: f32 = 50.0;
@@ -21,12 +20,7 @@ fn main() {
             ..WindowDescriptor::default()
         })
         .add_plugins(DefaultPlugins)
-        .add_plugin(EditorPlugin)
         .insert_resource(Selection::default())
-        .insert_resource(Match3Config {
-            board_dimensions: [5, 5].into(),
-            ..Match3Config::default()
-        })
         .add_plugin(Match3Plugin)
         .add_startup_system(setup_graphics)
         .add_system(move_to)
@@ -61,6 +55,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
     let vis_board = commands
         .spawn_bundle((Transform::default(), GlobalTransform::default()))
         .id();
+
     board.iter().for_each(|(position, typ)| {
         let transform = Transform::from_xyz(
             position.x as f32 * GEM_SIDE_LENGTH,
@@ -83,7 +78,9 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
         commands.entity(vis_board).add_child(child);
     });
 
-    commands.entity(vis_board).insert(VisibleBoard(gems));
+    let board = VisibleBoard(gems);
+
+    commands.entity(vis_board).insert(board);
 }
 
 fn map_type_to_path(typ: u32) -> String {
@@ -127,7 +124,6 @@ fn consume_events(
                 BoardEvent::Swapped(pos1, pos2) => {
                     let gem1 = board.0.get(&pos1).copied().unwrap();
                     let gem2 = board.0.get(&pos2).copied().unwrap();
-                    println!("Swapping gem {gem1:?} in {pos1} with gem {gem2:?} in {pos2}");
 
                     commands
                         .entity(gem1)
@@ -141,9 +137,7 @@ fn consume_events(
                     board.0.insert(pos1, gem2);
                 }
                 BoardEvent::Popped(pos) => {
-                    println!("Removing gem from {pos}");
                     let gem = board.0.get(&pos).copied().unwrap();
-                    println!("Removing {gem:?}");
                     board.0.remove(&pos);
                     commands.entity(gem).despawn_recursive();
                     spawn_explosion(
@@ -161,13 +155,10 @@ fn consume_events(
                         .unwrap();
                 }
                 BoardEvent::Dropped(drops) => {
-                    println!("Processing new drop");
                     // Need to keep a buffered board clone because we read and write at the same time
                     let mut new_board = board.clone();
-                    for (from, to) in drops {
-                        println!("Dropping from {from} to {to}");
+                    for bevy_match3::systems::Drop { from, to } in drops {
                         let gem = board.0.get(&from).copied().unwrap();
-                        println!("Dropping {gem:?}");
                         new_board.0.insert(to, gem);
                         new_board.0.remove(&from);
                         commands
@@ -194,14 +185,13 @@ fn consume_events(
                             })
                             .insert(MoveTo(world_pos))
                             .id();
-                        println!("Spawning gem {gem:?} in {pos}");
                         new_board.0.insert(pos, gem);
                         commands.entity(board_entity).add_child(gem);
                     }
                     *board = new_board;
                 }
                 _ => {
-                    println!("Received unimplemented event")
+                    println!("Received unimplemented event");
                 }
             }
         }

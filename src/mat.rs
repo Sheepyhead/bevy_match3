@@ -12,7 +12,7 @@ pub enum Match {
 
 #[derive(Default, Clone)]
 pub struct Matches {
-    matches: Vec<Match>,
+    pub(crate) matches: Vec<Match>,
 }
 
 impl Matches {
@@ -32,10 +32,6 @@ impl Matches {
             })
             .cloned()
             .collect()
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.matches.len()
     }
 
     pub(crate) fn is_empty(&self) -> bool {

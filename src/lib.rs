@@ -27,11 +27,13 @@ impl Plugin for Match3Plugin {
             })
         });
 
-        app.insert_resource(Board {
+        let board = Board {
             dimensions: board_dimensions,
             gems,
             types: (0..gem_types).collect(),
-        })
+        };
+
+        app.insert_resource(board)
         .insert_resource(BoardCommands::default())
         .insert_resource(BoardEvents::default())
         .add_system(read_commands);
