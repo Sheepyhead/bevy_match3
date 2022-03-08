@@ -4,6 +4,9 @@
 [![docs.rs](https://docs.rs/bevy_match3/badge.svg)](https://docs.rs/bevy_match3)
 [![Crates.io](https://img.shields.io/crates/d/bevy_match3.svg)](https://crates.io/crates/bevy_match3)
 
+
+<img src="example.gif" width="300" height="300" />
+
 `bevy_match3` is a crate for handling the logic side of match 3 games in [Bevy](https://bevyengine.org/).
 
 ## Bevy Version Support
