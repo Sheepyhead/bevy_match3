@@ -13,6 +13,7 @@
 | `bevy` | `bevy_match3` |
 | ------ | ------------- |
 | 0.6    | 0.0.1           |
+| 0.7    | 0.0.2           |
 
 ## Features
 - Configurable number of gem types and board dimensions

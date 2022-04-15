@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    utils::{HashMap, HashSet},
+    utils::{HashMap, HashSet, hashbrown::hash_map},
 };
 use rand::prelude::IteratorRandom;
 
@@ -65,7 +65,7 @@ impl Board {
     }
 
     /// Returns an iterator over the kvps in the board
-    pub fn iter(&self) -> std::collections::hash_map::Iter<UVec2, u32> {
+    pub fn iter(&self) -> hash_map::Iter<UVec2, u32> {
         self.gems.iter()
     }
 
