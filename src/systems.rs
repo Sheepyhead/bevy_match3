@@ -74,6 +74,9 @@ impl BoardCommands {
     /// # Examples
     ///
     /// ```
+    /// use bevy::prelude::*;
+    /// use bevy_match3::prelude::*;
+    /// 
     /// fn example_system(
     ///     mut board_commands: ResMut<BoardCommands>,
     /// ) {

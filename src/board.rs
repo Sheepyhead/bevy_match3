@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    utils::{HashMap, HashSet, hashbrown::hash_map},
+    utils::{hashbrown::hash_map, HashMap, HashSet},
 };
 use rand::prelude::IteratorRandom;
 
@@ -118,22 +118,33 @@ impl Board {
         drops
     }
 
-    pub(crate) fn swap(&mut self, pos1: &UVec2, pos2: &UVec2) -> Result<(), &str> {
-        let gem1 = self
-            .get(pos1)
-            .copied()
-            .ok_or("No gems at position {pos1}")?;
-        let gem2 = self
-            .get(pos2)
-            .copied()
-            .ok_or("No gems at position {pos2}")?;
+    pub(crate) fn swap(&mut self, pos1: &UVec2, pos2: &UVec2) -> Result<(), SwapError> {
+        let gem1 = self.get(pos1).copied().ok_or(SwapError::NoGem(*pos1))?;
+        let gem2 = self.get(pos2).copied().ok_or(SwapError::NoGem(*pos2))?;
         self.gems.insert(*pos1, gem2);
         self.gems.insert(*pos2, gem1);
         if self.get_matches().is_empty() {
             self.gems.insert(*pos1, gem1);
             self.gems.insert(*pos2, gem2);
-            Err("Swap resulted in no matches")
+            Err(SwapError::NoMatches)
         } else {
+            Ok(())
+        }
+    }
+
+    /// Like swap but doesn't permanently change the board, useful for match checking
+    fn try_swap(&mut self, pos1: &UVec2, pos2: &UVec2) -> Result<(), SwapError> {
+        let gem1 = self.get(pos1).copied().ok_or(SwapError::NoGem(*pos1))?;
+        let gem2 = self.get(pos2).copied().ok_or(SwapError::NoGem(*pos2))?;
+        self.gems.insert(*pos1, gem2);
+        self.gems.insert(*pos2, gem1);
+        if self.get_matches().is_empty() {
+            self.gems.insert(*pos1, gem1);
+            self.gems.insert(*pos2, gem2);
+            Err(SwapError::NoMatches)
+        } else {
+            self.gems.insert(*pos1, gem1);
+            self.gems.insert(*pos2, gem2);
             Ok(())
         }
     }
@@ -210,11 +221,111 @@ impl Board {
             self.fill();
         }
     }
+
+    fn adjacents(&self, pos: UVec2) -> Vec<UVec2> {
+        let mut adjacents = Vec::with_capacity(4);
+        if pos.x != 0 {
+            adjacents.push(pos.left());
+        }
+        if pos.x != self.dimensions.x {
+            adjacents.push(pos.right());
+        }
+        if pos.y != 0 {
+            adjacents.push(pos.up());
+        }
+        if pos.y != self.dimensions.y {
+            adjacents.push(pos.down());
+        }
+        adjacents
+    }
+
+    /// Returns any moves that would result in a match by swapping with a neighboring gem
+    pub fn get_matching_moves(&self) -> HashSet<BoardMove> {
+        let mut moves = HashSet::new();
+        let mut temp_board = self.clone(); // NOTE: This clone is not ideal. First candidate for optimizing
+        for (pos, _) in self.iter() {
+            for adjacent in self.adjacents(*pos) {
+                if temp_board.try_swap(pos, &adjacent).is_ok() {
+                    moves.insert(BoardMove(*pos, adjacent));
+                }
+            }
+        }
+        moves
+    }
+}
+
+pub(crate) enum SwapError {
+    NoGem(UVec2),
+    NoMatches,
+}
+
+/// Represents a swap between two gems, order of gems doesn't matter
+#[derive(Eq, Debug)]
+pub struct BoardMove(pub UVec2, pub UVec2);
+
+impl PartialEq for BoardMove {
+    fn eq(&self, other: &Self) -> bool {
+        (self.0 == other.0 && self.1 == other.1) || (self.0 == other.1 && self.1 == other.0)
+    }
+}
+
+impl core::hash::Hash for BoardMove {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let Self(a, b) = self;
+        if a.x < b.x {
+            a.hash(state);
+            b.hash(state);
+        } else if b.x < a.x {
+            b.hash(state);
+            a.hash(state);
+        } else if a.y < b.y {
+            a.hash(state);
+            b.hash(state);
+        } else {
+            b.hash(state);
+            a.hash(state);
+        }
+    }
+}
+
+trait BoardPosition {
+    fn left(&self) -> Self;
+    fn right(&self) -> Self;
+    fn up(&self) -> Self;
+    fn down(&self) -> Self;
+    fn cardinally_adjacent(&self, other: &Self) -> bool;
+}
+
+impl BoardPosition for UVec2 {
+    fn left(&self) -> Self {
+        Self::new(self.x.saturating_sub(1), self.y)
+    }
+
+    fn right(&self) -> Self {
+        Self::new(self.x.saturating_add(1), self.y)
+    }
+
+    fn up(&self) -> Self {
+        Self::new(self.x, self.y.saturating_sub(1))
+    }
+
+    fn down(&self) -> Self {
+        Self::new(self.x, self.y.saturating_add(1))
+    }
+
+    fn cardinally_adjacent(&self, other: &Self) -> bool {
+        self == &other.left()
+            || self == &other.right()
+            || self == &other.up()
+            || self == &other.down()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{mat::Matches, Board};
+    use bevy::math::UVec2;
+
+    use crate::{mat::Matches, prelude::BoardMove, Board};
 
     impl Matches {
         fn len(&self) -> usize {
@@ -443,5 +554,72 @@ mod tests {
         assert!(moves.contains(&([0, 1].into(), [0, 4].into())));
         assert!(moves.contains(&([0, 0].into(), [0, 3].into())));
         assert!(moves.contains(&([4, 0].into(), [4, 1].into())));
+    }
+
+    #[test]
+    fn check_simple_move() {
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![10, 11,  8, 13,  8],
+            vec![15, 16, 17, 18, 19],
+            vec![20, 21, 22, 23, 24],
+            vec![25, 26, 27, 28, 29],
+            vec![30, 31, 32, 33, 34],
+        ].into();
+
+        let matching_moves = board.get_matching_moves();
+
+        assert_eq!(matching_moves.len(), 1);
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(3, 1), UVec2::new(3, 2))))
+    }
+
+    #[test]
+    fn check_multiple_simple_moves() {
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  1,  2,  3,  4],
+            vec![ 5,  0, 13,  8, 13],
+            vec![ 0, 11, 12, 13, 14],
+            vec![15, 16, 17, 18, 19],
+            vec![20, 21, 22, 23, 24],
+            vec![25, 26, 30, 28, 24],
+            vec![30, 30, 32, 24, 34],
+        ].into();
+
+        let matching_moves = board.get_matching_moves();
+
+        assert_eq!(matching_moves.len(), 4);
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(0, 1), UVec2::new(1, 1))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(3, 1), UVec2::new(3, 2))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(2, 5), UVec2::new(2, 6))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(3, 6), UVec2::new(4, 6))));
+    }
+
+    #[test]
+    fn check_advanced_moves() {
+        #[rustfmt::skip]
+        let board: Board = vec![
+            vec![ 0,  6,  2,  3,  4],
+            vec![ 5,  6,  7,  8,  9],
+            vec![ 6, 11,  6, 13, 14],
+            vec![15,  6, 17, 18, 19],
+            vec![20, 21, 25, 23, 24],
+            vec![25, 25, 27, 25, 25],
+            vec![30, 31, 25, 33, 34],
+        ].into();
+
+        let matching_moves = board.get_matching_moves();
+
+        assert_eq!(matching_moves.len(), 8);
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(0, 2), UVec2::new(1, 2))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(1, 1), UVec2::new(1, 2))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(1, 3), UVec2::new(1, 2))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(2, 2), UVec2::new(1, 2))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(2, 4), UVec2::new(2, 5))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(2, 6), UVec2::new(2, 5))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(1, 5), UVec2::new(2, 5))));
+        assert!(matching_moves.contains(&BoardMove(UVec2::new(3, 5), UVec2::new(2, 5))));
     }
 }

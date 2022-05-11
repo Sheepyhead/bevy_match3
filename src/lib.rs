@@ -20,6 +20,7 @@ pub mod prelude {
     pub use crate::mat::*;
     pub use crate::systems::*;
     pub use crate::Match3Plugin;
+    pub use crate::Match3Config;
 }
 
 /// The central logic plugin of the ``bevy_match3`` crate
@@ -67,6 +68,7 @@ impl Plugin for Match3Plugin {
 /// # Examples
 /// 
 /// ```
+/// use bevy::prelude::*;
 /// use bevy_match3::prelude::*;
 /// 
 /// App::new()
