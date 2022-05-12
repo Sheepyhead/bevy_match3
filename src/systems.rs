@@ -1,6 +1,7 @@
 use crate::{board::*, mat::Matches};
 use bevy::prelude::*;
 use queues::{IsQueue, Queue};
+use rand::{prelude::SliceRandom, thread_rng};
 use std::fmt;
 
 pub(crate) fn read_commands(
@@ -58,6 +59,21 @@ pub(crate) fn read_commands(
                             .unwrap();
                     }
                 }
+                BoardCommand::Shuffle => {
+                    let gems = board.gems.clone();
+                    let mut values = gems.iter().collect::<Vec<_>>();
+                    let mut moves =
+                        Vec::with_capacity((board.dimensions.x * board.dimensions.y) as usize);
+                    values.shuffle(&mut thread_rng());
+                    for ((old_key, value), new_key) in values.iter().copied().zip(gems.keys()) {
+                        board.insert(*new_key, *value);
+                        moves.push((*old_key, *new_key));
+                    }
+                    events
+                        .push(BoardEvent::Shuffled(moves))
+                        .map_err(|err| println!("{err}"))
+                        .unwrap();
+                }
             }
         }
     }
@@ -76,7 +92,7 @@ impl BoardCommands {
     /// ```
     /// use bevy::prelude::*;
     /// use bevy_match3::prelude::*;
-    /// 
+    ///
     /// fn example_system(
     ///     mut board_commands: ResMut<BoardCommands>,
     /// ) {
@@ -103,6 +119,8 @@ pub enum BoardCommand {
     Swap(UVec2, UVec2),
     /// Pops all gems at the given positions, causing drops, spawns, and may cause matches to occur
     Pop(Vec<UVec2>),
+    /// Shuffles all gems on the board, may result in matches
+    Shuffle,
 }
 
 impl BoardEvents {
@@ -125,8 +143,8 @@ pub struct BoardEvents(pub(crate) Queue<BoardEvent>);
 pub enum BoardEvent {
     /// Two gems have been successfully swapped, usually as a result of a ``BoardCommand::Swap`` command
     Swapped(UVec2, UVec2),
-    /// Two gems have failed to swap, this means no changes have been made to the logic board. 
-    /// 
+    /// Two gems have failed to swap, this means no changes have been made to the logic board.
+    ///
     /// This is usually as a result of a ``BoardCommand::Swap`` command
     FailedSwap(UVec2, UVec2),
     /// One or more gems have dropped from a higher position to a lower position, or in other words their
@@ -140,6 +158,8 @@ pub enum BoardEvent {
     Spawned(Vec<(UVec2, u32)>),
     /// Matches have been detected.
     Matched(Matches),
+    /// The board has been shuffled, this is is the list of moves from .0 to .1
+    Shuffled(Vec<(UVec2, UVec2)>),
 }
 
 /// Represents a gem dropping from a higher to a lower position
