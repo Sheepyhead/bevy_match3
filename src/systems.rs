@@ -51,13 +51,7 @@ pub(crate) fn read_commands(
                         .map_err(|err| println!("{err}"))
                         .unwrap();
 
-                    let matches = board.get_matches();
-                    if !matches.is_empty() {
-                        events
-                            .push(BoardEvent::Matched(matches))
-                            .map_err(|err| println!("{err}"))
-                            .unwrap();
-                    }
+                    check_for_matches(&board, &mut events);
                 }
                 BoardCommand::Shuffle => {
                     let gems = board.gems.clone();
@@ -73,9 +67,21 @@ pub(crate) fn read_commands(
                         .push(BoardEvent::Shuffled(moves))
                         .map_err(|err| println!("{err}"))
                         .unwrap();
+
+                    check_for_matches(&board, &mut events);
                 }
             }
         }
+    }
+}
+
+fn check_for_matches(board: &ResMut<Board>, events: &mut ResMut<BoardEvents>) {
+    let matches = board.get_matches();
+    if !matches.is_empty() {
+        events
+            .push(BoardEvent::Matched(matches))
+            .map_err(|err| println!("{err}"))
+            .unwrap();
     }
 }
 

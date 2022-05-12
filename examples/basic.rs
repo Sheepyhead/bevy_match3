@@ -1,5 +1,5 @@
 use bevy::{
-    input::{mouse::MouseButtonInput, ElementState},
+    input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ElementState},
     math::Vec3Swizzles,
     prelude::*,
     utils::HashMap,
@@ -25,6 +25,7 @@ fn main() {
         .add_system(visualize_selection)
         .add_system(control)
         .add_system(animate_once)
+        .add_system(shuffle)
         .run();
 }
 
@@ -185,6 +186,19 @@ fn consume_events(
                         commands.entity(board_entity).add_child(gem);
                     }
                     *board = new_board;
+                }
+                BoardEvent::Shuffled(moves) => {
+                    let mut temp_board = board.clone();
+                    for (from, to) in moves {
+                        let gem = board.0.get(&from).copied().unwrap();
+
+                        commands
+                            .entity(gem)
+                            .insert(MoveTo(board_pos_to_world_pos(&to)));
+
+                        temp_board.0.insert(to, gem);
+                    }
+                    *board = temp_board;
                 }
                 _ => {
                     println!("Received unimplemented event");
@@ -364,4 +378,23 @@ fn spawn_explosion(
             ..SpriteSheetBundle::default()
         })
         .insert(AnimationTimer(Timer::from_seconds(0.1, true)));
+}
+
+fn shuffle(
+    mut board_commands: ResMut<BoardCommands>,
+    mut key_event: EventReader<KeyboardInput>,
+    animations: Query<(), With<MoveTo>>,
+) {
+    if animations.iter().count() == 0 {
+        for event in key_event.iter() {
+            if let KeyboardInput {
+                key_code: Some(KeyCode::S),
+                state: ElementState::Pressed,
+                ..
+            } = event
+            {
+                board_commands.push(BoardCommand::Shuffle).unwrap();
+            }
+        }
+    }
 }
