@@ -64,7 +64,12 @@ and start sending commands to the board using the `BoardCommands` resource!
 For now there is one example of all features at [`basic.rs`](examples/basic.rs)
 
 ## License
-Note that this project is licensed under the [`Anti-Capitalist Software License`](https://anticapitalist.software/). If this proves a major obstacle for adoption I may consider a more conventional license, I would just like to avoid this crate being flipped by the likes of King and similar.
+All code in this repository is dual-licensed under either:
+
+- MIT License (LICENSE-MIT or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+
+at your option. 
 
 ## Credits
 - **Ilustragm** for their awesome gem icon pack used in the examples! https://ilustragm.itch.io/set-gems-icon-01
