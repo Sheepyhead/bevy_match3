@@ -1,8 +1,8 @@
 use bevy::{
-    input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ElementState},
+    input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
     math::Vec3Swizzles,
     prelude::*,
-    utils::HashMap,
+    utils::HashMap, render::texture::ImageSettings,
 };
 use bevy_match3::prelude::*;
 
@@ -15,6 +15,7 @@ fn main() {
             title: "bevy_match3 basic example".to_string(),
             ..WindowDescriptor::default()
         })
+        .insert_resource(ImageSettings::default_nearest())
         .add_plugins(DefaultPlugins)
         .insert_resource(Selection::default())
         .add_plugin(Match3Plugin)
@@ -39,7 +40,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
     let board_side_length = GEM_SIDE_LENGTH * 10.0;
     let centered_offset_x = board_side_length / 2.0 - GEM_SIDE_LENGTH / 2.0;
     let centered_offset_y = board_side_length / 2.0 - GEM_SIDE_LENGTH / 2.0;
-    let mut camera = OrthographicCameraBundle::new_2d();
+    let mut camera = Camera2dBundle::default();
     camera.transform = Transform::from_xyz(
         centered_offset_x,
         0.0 - centered_offset_y,
@@ -49,9 +50,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
 
     let mut gems = HashMap::default();
 
-    let vis_board = commands
-        .spawn_bundle((Transform::default(), GlobalTransform::default()))
-        .id();
+    let vis_board = commands.spawn_bundle(SpatialBundle::default()).id();
 
     board.iter().for_each(|(position, typ)| {
         let transform = Transform::from_xyz(
@@ -228,7 +227,7 @@ fn input(
     for event in button_events.iter() {
         if let MouseButtonInput {
             button: MouseButton::Left,
-            state: ElementState::Pressed,
+            state: ButtonState::Pressed,
         } = event
         {
             let window = windows.get_primary().unwrap();
@@ -242,7 +241,7 @@ fn input(
                 let (camera, camera_transform) = camera.single();
                 // matrix for undoing the projection and camera transform
                 let ndc_to_world =
-                    camera_transform.compute_matrix() * camera.projection_matrix.inverse();
+                    camera_transform.compute_matrix() * camera.projection_matrix().inverse();
 
                 // use it to convert ndc to world-space coordinates
                 let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
@@ -389,7 +388,7 @@ fn shuffle(
         for event in key_event.iter() {
             if let KeyboardInput {
                 key_code: Some(KeyCode::S),
-                state: ElementState::Pressed,
+                state: ButtonState::Pressed,
                 ..
             } = event
             {

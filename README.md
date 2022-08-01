@@ -14,15 +14,16 @@
 | ------ | ------------- |
 | 0.6    | 0.0.1           |
 | 0.7    | 0.0.2           |
+| 0.8    | 0.1.0           |
 
 ## Features
 - Configurable number of gem types and board dimensions
 - Guaranteed no matches at board creation
 - Cascading matches
+- Check for matches when board is done moving
+- Shuffle board
 
 ## Immediate todo
-- [ ] Event for no matches
-- [ ] Board shuffling
 - [ ] Decouple board from plugin and make multiple boards example
 
 ## Possible todo based on demand
