@@ -86,7 +86,7 @@ fn check_for_matches(board: &ResMut<Board>, events: &mut ResMut<BoardEvents>) {
 }
 
 /// The resource used to send commands to the logic board
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct BoardCommands(pub(crate) Queue<BoardCommand>);
 
 impl BoardCommands {
@@ -141,7 +141,7 @@ impl BoardEvents {
 }
 
 /// The resource used to receive information about changes in the logic board
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct BoardEvents(pub(crate) Queue<BoardEvent>);
 
 /// The events that indicate a possible change in the logic board

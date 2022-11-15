@@ -7,7 +7,7 @@ use rand::prelude::IteratorRandom;
 use crate::mat::*;
 
 /// The main struct representing the logical match 3 board
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Eq, PartialEq, Debug, Clone, Resource)]
 pub struct Board {
     pub(crate) dimensions: UVec2,
     pub(crate) gems: HashMap<UVec2, u32>,

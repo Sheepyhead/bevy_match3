@@ -79,7 +79,7 @@ impl Plugin for Match3Plugin {
 ///     .add_plugin(Match3Plugin)
 ///     .run();
 /// ```
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Resource)]
 pub struct Match3Config {
     /// The number of different gem types the board can spawn
     pub gem_types: u32,

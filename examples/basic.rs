@@ -2,7 +2,7 @@ use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
     math::Vec3Swizzles,
     prelude::*,
-    utils::HashMap, render::texture::ImageSettings,
+    utils::HashMap,
 };
 use bevy_match3::prelude::*;
 
@@ -10,13 +10,17 @@ const GEM_SIDE_LENGTH: f32 = 50.0;
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            resizable: false,
-            title: "bevy_match3 basic example".to_string(),
-            ..WindowDescriptor::default()
-        })
-        .insert_resource(ImageSettings::default_nearest())
-        .add_plugins(DefaultPlugins)
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    window: WindowDescriptor {
+                        resizable: false,
+                        title: "bevy_match3 basic example".to_string(),
+                        ..WindowDescriptor::default()
+                    },
+                    ..default()
+                }),
+        )
         .insert_resource(Selection::default())
         .add_plugin(Match3Plugin)
         .add_startup_system(setup_graphics)
@@ -46,11 +50,11 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
         0.0 - centered_offset_y,
         camera.transform.translation.z,
     );
-    commands.spawn_bundle(camera).insert(MainCamera);
+    commands.spawn(camera).insert(MainCamera);
 
     let mut gems = HashMap::default();
 
-    let vis_board = commands.spawn_bundle(SpatialBundle::default()).id();
+    let vis_board = commands.spawn(SpatialBundle::default()).id();
 
     board.iter().for_each(|(position, typ)| {
         let transform = Transform::from_xyz(
@@ -59,7 +63,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
             0.0,
         );
         let child = commands
-            .spawn_bundle(SpriteBundle {
+            .spawn(SpriteBundle {
                 sprite: Sprite {
                     custom_size: Some(Vec2::new(GEM_SIDE_LENGTH, GEM_SIDE_LENGTH)),
                     ..Sprite::default()
@@ -170,7 +174,7 @@ fn consume_events(
                     for (pos, typ) in spawns {
                         let world_pos = board_pos_to_world_pos(&pos);
                         let gem = commands
-                            .spawn_bundle(SpriteBundle {
+                            .spawn(SpriteBundle {
                                 texture: ass.load(&map_type_to_path(typ)),
                                 transform: Transform::from_xyz(world_pos.x, 200.0, 0.0),
                                 sprite: Sprite {
@@ -214,7 +218,7 @@ fn board_pos_to_world_pos(pos: &UVec2) -> Vec2 {
     )
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Resource)]
 struct Selection(Option<Entity>);
 
 fn input(
@@ -286,7 +290,7 @@ fn visualize_selection(
                 *old_transform = (*transform).into();
             } else {
                 commands
-                    .spawn_bundle(SpriteBundle {
+                    .spawn(SpriteBundle {
                         texture: ass.load("rectangle.png"),
                         sprite: Sprite {
                             custom_size: Some([50.0, 50.0].into()),
@@ -368,15 +372,19 @@ fn spawn_explosion(
     pos: &Vec2,
 ) {
     let texture_handle = ass.load("explosion.png");
-    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(49.0, 50.0), 4, 1);
+    let texture_atlas =
+        TextureAtlas::from_grid(texture_handle, Vec2::new(49.0, 50.0), 4, 1, None, None);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
     commands
-        .spawn_bundle(SpriteSheetBundle {
+        .spawn(SpriteSheetBundle {
             texture_atlas: texture_atlas_handle,
             transform: Transform::from_translation(pos.extend(0.0)),
             ..SpriteSheetBundle::default()
         })
-        .insert(AnimationTimer(Timer::from_seconds(0.1, true)));
+        .insert(AnimationTimer(Timer::from_seconds(
+            0.1,
+            TimerMode::Repeating,
+        )));
 }
 
 fn shuffle(
