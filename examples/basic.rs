@@ -48,8 +48,6 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, asset_server: Res<A
     let centered_offset_x = board_side_length / 2.0 - GEM_SIDE_LENGTH / 2.0;
     let centered_offset_y = board_side_length / 2.0 - GEM_SIDE_LENGTH / 2.0;
 
-
-    println!("Offset x: {:?}. Offset y: {:?}, Board length: {:?}", centered_offset_x, centered_offset_y, board_side_length);
     let mut camera = Camera2dBundle::default();
     camera.transform = Transform::from_xyz(
         centered_offset_x,
@@ -83,7 +81,6 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, asset_server: Res<A
             .id();
         gems.insert(*position, child);
         commands.entity(vis_board).add_child(child);
-        println!("Postion:{:?}, POS: {:?}, EntityId{:?}", transform, position, child)
     });
 
 
@@ -133,7 +130,6 @@ fn consume_events(
                 BoardEvent::Swapped(pos1, pos2) => {
                     let gem1 = board.0.get(&pos1).copied().unwrap();
                     let gem2 = board.0.get(&pos2).copied().unwrap();
-
                     commands
                         .entity(gem1)
                         .insert(MoveTo(board_pos_to_world_pos(&pos2)));
@@ -245,15 +241,13 @@ fn input(
                 .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
                 .map(|ray| ray.origin.truncate())
             {
-                eprintln!("World coords: {}/{}", world_position.x, world_position.y);
-
                 // round down to the gem coordinate
                 let coordinates: IVec2 = (
                     ((world_position.x + GEM_SIDE_LENGTH / 2.0) / GEM_SIDE_LENGTH) as i32,
                     ((GEM_SIDE_LENGTH / 2.0 - world_position.y) / GEM_SIDE_LENGTH) as i32,
                 )
                     .into();
-                println!("Looking for cords: {:?}", coordinates);
+
                 if coordinates.x >= 0 && coordinates.y >= 0 {
                     selection.0 = board
                         .single()
@@ -279,7 +273,6 @@ fn visualize_selection(
     if selection.is_changed() {
         if let Some(selected_gem) = selection.0 {
             let transform = g_transforms.get(selected_gem).unwrap();
-            println!("Cords to highlight: {:?}", transform.translation());
             if let Ok((_, mut old_transform)) = rectangle.get_single_mut() {
                 *old_transform = (*transform).into();
             } else {
