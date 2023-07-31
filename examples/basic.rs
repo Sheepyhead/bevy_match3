@@ -4,8 +4,6 @@ use bevy::{
     prelude::*,
     utils::HashMap,
 };
-use bevy::ecs::query::Has;
-use bevy::math::vec2;
 use bevy::window::PrimaryWindow;
 use bevy_match3::prelude::*;
 
@@ -27,13 +25,14 @@ fn main() {
         .insert_resource(Selection::default())
         .add_plugins(Match3Plugin)
         .add_systems(Startup, setup_graphics)
-        .add_systems(Update, move_to)
-        .add_systems(Update, consume_events)
-        .add_systems(Update, input)
-        .add_systems(Update, visualize_selection)
-        .add_systems(Update, control)
-        .add_systems(Update, animate_once)
-        .add_systems(Update, shuffle)
+        .add_systems(Update, (
+            move_to,
+            consume_events,
+            input,
+            visualize_selection,
+            control,
+            animate_once,
+            shuffle))
         .run();
 }
 
@@ -162,7 +161,7 @@ fn consume_events(
                 BoardEvent::Dropped(drops) => {
                     // Need to keep a buffered board clone because we read and write at the same time
                     let mut new_board = board.clone();
-                    for bevy_match3::prelude::Drop { from, to } in drops {
+                    for Drop { from, to } in drops {
                         let gem = board.0.get(&from).copied().unwrap();
                         new_board.0.insert(to, gem);
                         new_board.0.remove(&from);
@@ -229,13 +228,18 @@ struct Selection(Option<Entity>);
 fn input(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut selection: ResMut<Selection>,
-    mut button_events: Res<Input<MouseButton>>,
+    mut button_events: EventReader<MouseButtonInput>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     board: Query<&VisibleBoard>,
 ) {
-    let window = window_query.get_single().unwrap();
-    if button_events.just_pressed(MouseButton::Left) {
-        if let Some(pos) = window.cursor_position() {
+    for event in button_events.iter() {
+        if let MouseButtonInput {
+            button: MouseButton::Left,
+            state: ButtonState::Pressed,
+            window: _
+        } = event
+        {
+            let window = window_query.single();
             let (camera, camera_transform) = camera.single();
             if let Some(world_position) = window.cursor_position()
                 .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))

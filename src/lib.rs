@@ -59,7 +59,7 @@ impl Plugin for Match3Plugin {
         app.insert_resource(board)
             .insert_resource(BoardCommands::default())
             .insert_resource(BoardEvents::default())
-            .add_systems(Update,read_commands);
+            .add_systems(Update, read_commands);
     }
 }
 
@@ -101,7 +101,7 @@ mod tests {
     use bevy::prelude::*;
     use queues::{IsQueue, Queue};
 
-    use crate::{board::*, Match3Plugin, systems::*};
+    use crate::{board::*, systems::*};
 
     #[test]
     fn swap_gems() {
