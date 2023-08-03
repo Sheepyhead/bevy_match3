@@ -236,7 +236,7 @@ fn input(
         if let MouseButtonInput {
             button: MouseButton::Left,
             state: ButtonState::Pressed,
-            window: _
+            ..
         } = event
         {
             let window = window_query.single();

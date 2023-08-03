@@ -323,7 +323,7 @@ impl BoardPosition for UVec2 {
 
 #[cfg(test)]
 mod tests {
-    use bevy::math::{UVec2};
+    use bevy::math::UVec2;
 
     use crate::{mat::Matches, prelude::BoardMove, Board};
 

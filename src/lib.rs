@@ -122,19 +122,19 @@ mod tests {
             .add(BoardCommand::Swap([1, 2].into(), [2, 2].into()))
             .unwrap();
 
-        let mut update_stage = App::new();
-        update_stage.add_systems(Update, read_commands);
-        update_stage.insert_resource(board.clone());
-        update_stage.insert_resource(BoardCommands(queue));
-        update_stage.insert_resource(BoardEvents::default());
+        let mut app = App::new();
+        app.add_systems(Update, read_commands);
+        app.insert_resource(board.clone());
+        app.insert_resource(BoardCommands(queue));
+        app.insert_resource(BoardEvents::default());
 
         // update
-        update_stage.update();
+        app.update();
 
         // check
-        assert_ne!(board, *update_stage.world.get_resource::<Board>().unwrap());
+        assert_ne!(board, *app.world.get_resource::<Board>().unwrap());
         assert_eq!(
-            update_stage.world
+            app.world
                 .get_resource::<Board>()
                 .unwrap()
                 .get(&[1, 2].into())
@@ -143,7 +143,7 @@ mod tests {
             12
         );
         assert_eq!(
-            update_stage.world
+            app.world
                 .get_resource::<Board>()
                 .unwrap()
                 .get(&[2, 2].into())
@@ -172,19 +172,19 @@ mod tests {
             .add(BoardCommand::Swap([1, 2].into(), [2, 2].into()))
             .unwrap();
 
-        let mut update_stage = App::new();
-        update_stage.add_systems(Update, read_commands);
-        update_stage.insert_resource(board.clone());
-        update_stage.insert_resource(BoardCommands(queue));
-        update_stage.insert_resource(BoardEvents::default());
+        let mut app = App::new();
+        app.add_systems(Update, read_commands);
+        app.insert_resource(board.clone());
+        app.insert_resource(BoardCommands(queue));
+        app.insert_resource(BoardEvents::default());
 
         // update
-        update_stage.update();
+        app.update();
 
         // check
-        assert_eq!(board, *update_stage.world.get_resource::<Board>().unwrap());
+        assert_eq!(board, *app.world.get_resource::<Board>().unwrap());
         assert_eq!(
-            update_stage.world
+            app.world
                 .get_resource::<Board>()
                 .unwrap()
                 .get(&[1, 2].into())
@@ -193,7 +193,7 @@ mod tests {
             11
         );
         assert_eq!(
-            update_stage.world
+            app.world
                 .get_resource::<Board>()
                 .unwrap()
                 .get(&[2, 2].into())
@@ -220,17 +220,17 @@ mod tests {
         let mut queue = Queue::default();
         queue.add(BoardCommand::Pop(vec![[1, 4].into()])).unwrap();
 
-        let mut update_stage = App::new();
-        update_stage.add_systems(Update, read_commands);
-        update_stage.insert_resource(board.clone());
-        update_stage.insert_resource(BoardCommands(queue));
-        update_stage.insert_resource(BoardEvents::default());
+        let mut app = App::new();
+        app.add_systems(Update, read_commands);
+        app.insert_resource(board.clone());
+        app.insert_resource(BoardCommands(queue));
+        app.insert_resource(BoardEvents::default());
 
         // update
-        update_stage.update();
+        app.update();
 
         // check
-        let new_board = update_stage.world.get_resource::<Board>().unwrap();
+        let new_board = app.world.get_resource::<Board>().unwrap();
         assert_ne!(board, *new_board);
         assert_eq!(*new_board.get(&[1, 4].into()).unwrap(), 16);
         assert_eq!(*new_board.get(&[1, 3].into()).unwrap(), 11);
@@ -262,17 +262,17 @@ mod tests {
             ]))
             .unwrap();
 
-        let mut update_stage = App::new();
-        update_stage.add_systems(Update, read_commands);
-        update_stage.insert_resource(board.clone());
-        update_stage.insert_resource(BoardCommands(queue));
-        update_stage.insert_resource(BoardEvents::default());
+        let mut app = App::new();
+        app.add_systems(Update, read_commands);
+        app.insert_resource(board.clone());
+        app.insert_resource(BoardCommands(queue));
+        app.insert_resource(BoardEvents::default());
 
         // Update
-        update_stage.update();
+        app.update();
 
         // check
-        let new_board = update_stage.world.get_resource::<Board>().unwrap();
+        let new_board = app.world.get_resource::<Board>().unwrap();
         assert_ne!(board, *new_board);
         assert_eq!(*new_board.get(&[3, 6].into()).unwrap(), 18);
         assert_eq!(*new_board.get(&[3, 5].into()).unwrap(), 13);
@@ -306,17 +306,17 @@ mod tests {
             ]))
             .unwrap();
 
-        let mut update_stage = App::new();
-        update_stage.add_systems(Update,read_commands);
-        update_stage.insert_resource(board.clone());
-        update_stage.insert_resource(BoardCommands(queue));
-        update_stage.insert_resource(BoardEvents::default());
+        let mut app = App::new();
+        app.add_systems(Update,read_commands);
+        app.insert_resource(board.clone());
+        app.insert_resource(BoardCommands(queue));
+        app.insert_resource(BoardEvents::default());
 
         // update
-        update_stage.update();
+        app.update();
 
         // check
-        let new_board = update_stage.world.get_resource::<Board>().unwrap();
+        let new_board = app.world.get_resource::<Board>().unwrap();
         assert_ne!(board, *new_board);
         assert_eq!(*new_board.get(&[0, 5].into()).unwrap(), 20);
         assert_eq!(*new_board.get(&[1, 5].into()).unwrap(), 21);
