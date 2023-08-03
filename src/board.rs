@@ -20,8 +20,8 @@ impl std::fmt::Display for Board {
             f.write_fmt(format_args!(
                 "{:?}\n",
                 (0..self.dimensions.x)
-                    .map(|x| self.gems[&[x, y].into()])
-                    .collect::<Vec<_>>()
+                    .map(|x| self.gems[&<[u32; 2] as Into<UVec2>>::into([x, y])])
+                    .collect::<Vec<u32>>()
             ))
         });
         for res in res {
@@ -374,18 +374,18 @@ mod tests {
 
         let without_duplicates = matches.without_duplicates();
 
-        assert!(without_duplicates.contains(&[2, 2].into()));
-        assert!(without_duplicates.contains(&[2, 3].into()));
-        assert!(without_duplicates.contains(&[2, 4].into()));
-        assert!(without_duplicates.contains(&[3, 0].into()));
-        assert!(without_duplicates.contains(&[3, 1].into()));
-        assert!(without_duplicates.contains(&[3, 2].into()));
-        assert!(without_duplicates.contains(&[1, 4].into()));
-        assert!(without_duplicates.contains(&[1, 5].into()));
-        assert!(without_duplicates.contains(&[1, 6].into()));
-        assert!(without_duplicates.contains(&[4, 4].into()));
-        assert!(without_duplicates.contains(&[4, 5].into()));
-        assert!(without_duplicates.contains(&[4, 6].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 3].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 4].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 0].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 1].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[1, 4].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[1, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[1, 6].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[4, 4].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[4, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[4, 6].into()));
     }
 
     #[test]
@@ -407,18 +407,18 @@ mod tests {
 
         let without_duplicates = matches.without_duplicates();
 
-        assert!(without_duplicates.contains(&[1, 0].into()));
-        assert!(without_duplicates.contains(&[2, 0].into()));
-        assert!(without_duplicates.contains(&[3, 0].into()));
-        assert!(without_duplicates.contains(&[0, 2].into()));
-        assert!(without_duplicates.contains(&[1, 2].into()));
-        assert!(without_duplicates.contains(&[2, 2].into()));
-        assert!(without_duplicates.contains(&[2, 5].into()));
-        assert!(without_duplicates.contains(&[3, 5].into()));
-        assert!(without_duplicates.contains(&[4, 5].into()));
-        assert!(without_duplicates.contains(&[0, 6].into()));
-        assert!(without_duplicates.contains(&[1, 6].into()));
-        assert!(without_duplicates.contains(&[2, 6].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[1, 0].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 0].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 0].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[0, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[1, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[4, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[0, 6].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[1, 6].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 6].into()));
     }
 
     #[test]
@@ -440,18 +440,18 @@ mod tests {
 
         let without_duplicates = matches.without_duplicates();
 
-        assert!(without_duplicates.contains(&[3, 1].into()));
-        assert!(without_duplicates.contains(&[3, 2].into()));
-        assert!(without_duplicates.contains(&[3, 3].into()));
-        assert!(without_duplicates.contains(&[0, 2].into()));
-        assert!(without_duplicates.contains(&[1, 2].into()));
-        assert!(without_duplicates.contains(&[2, 2].into()));
-        assert!(without_duplicates.contains(&[0, 4].into()));
-        assert!(without_duplicates.contains(&[0, 5].into()));
-        assert!(without_duplicates.contains(&[0, 6].into()));
-        assert!(without_duplicates.contains(&[2, 5].into()));
-        assert!(without_duplicates.contains(&[3, 5].into()));
-        assert!(without_duplicates.contains(&[4, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 1].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 3].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[0, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[1, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 2].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[0, 4].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[0, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[0, 6].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 5].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[4, 5].into()));
     }
 
     #[test]
@@ -473,11 +473,11 @@ mod tests {
 
         let without_duplicates = matches.without_duplicates();
 
-        assert!(without_duplicates.contains(&[0, 3].into()));
-        assert!(without_duplicates.contains(&[1, 3].into()));
-        assert!(without_duplicates.contains(&[2, 3].into()));
-        assert!(without_duplicates.contains(&[3, 3].into()));
-        assert!(without_duplicates.contains(&[4, 3].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[0, 3].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[1, 3].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[2, 3].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[3, 3].into()));
+        assert!(without_duplicates.contains::<UVec2>(&[4, 3].into()));
     }
 
     #[test]

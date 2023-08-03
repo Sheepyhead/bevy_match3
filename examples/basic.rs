@@ -4,6 +4,7 @@ use bevy::{
     prelude::*,
     utils::HashMap,
 };
+use bevy::window::PrimaryWindow;
 use bevy_match3::prelude::*;
 
 const GEM_SIDE_LENGTH: f32 = 50.0;
@@ -13,24 +14,25 @@ fn main() {
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
-                    window: WindowDescriptor {
+                    primary_window: Some(Window {
                         resizable: false,
                         title: "bevy_match3 basic example".to_string(),
-                        ..WindowDescriptor::default()
-                    },
+                        ..default()
+                    }),
                     ..default()
                 }),
         )
         .insert_resource(Selection::default())
-        .add_plugin(Match3Plugin)
-        .add_startup_system(setup_graphics)
-        .add_system(move_to)
-        .add_system(consume_events)
-        .add_system(input)
-        .add_system(visualize_selection)
-        .add_system(control)
-        .add_system(animate_once)
-        .add_system(shuffle)
+        .add_plugins(Match3Plugin)
+        .add_systems(Startup, setup_graphics)
+        .add_systems(Update, (
+            move_to,
+            consume_events,
+            input,
+            visualize_selection,
+            control,
+            animate_once,
+            shuffle))
         .run();
 }
 
@@ -40,10 +42,11 @@ struct VisibleBoard(HashMap<UVec2, Entity>);
 #[derive(Component)]
 struct MainCamera;
 
-fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServer>) {
+fn setup_graphics(mut commands: Commands, board: Res<Board>, asset_server: Res<AssetServer>) {
     let board_side_length = GEM_SIDE_LENGTH * 10.0;
     let centered_offset_x = board_side_length / 2.0 - GEM_SIDE_LENGTH / 2.0;
     let centered_offset_y = board_side_length / 2.0 - GEM_SIDE_LENGTH / 2.0;
+
     let mut camera = Camera2dBundle::default();
     camera.transform = Transform::from_xyz(
         centered_offset_x,
@@ -62,6 +65,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
             position.y as f32 * -GEM_SIDE_LENGTH,
             0.0,
         );
+
         let child = commands
             .spawn(SpriteBundle {
                 sprite: Sprite {
@@ -69,7 +73,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
                     ..Sprite::default()
                 },
                 transform,
-                texture: ass.load(&map_type_to_path(*typ)),
+                texture: asset_server.load(&map_type_to_path(*typ)),
                 ..SpriteBundle::default()
             })
             .insert(Name::new(format!("{};{}", position.x, position.y)))
@@ -77,6 +81,7 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, ass: Res<AssetServe
         gems.insert(*position, child);
         commands.entity(vis_board).add_child(child);
     });
+
 
     let board = VisibleBoard(gems);
 
@@ -124,7 +129,6 @@ fn consume_events(
                 BoardEvent::Swapped(pos1, pos2) => {
                     let gem1 = board.0.get(&pos1).copied().unwrap();
                     let gem2 = board.0.get(&pos2).copied().unwrap();
-
                     commands
                         .entity(gem1)
                         .insert(MoveTo(board_pos_to_world_pos(&pos2)));
@@ -157,7 +161,7 @@ fn consume_events(
                 BoardEvent::Dropped(drops) => {
                     // Need to keep a buffered board clone because we read and write at the same time
                     let mut new_board = board.clone();
-                    for bevy_match3::prelude::Drop { from, to } in drops {
+                    for Drop { from, to } in drops {
                         let gem = board.0.get(&from).copied().unwrap();
                         new_board.0.insert(to, gem);
                         new_board.0.remove(&from);
@@ -222,7 +226,7 @@ fn board_pos_to_world_pos(pos: &UVec2) -> Vec2 {
 struct Selection(Option<Entity>);
 
 fn input(
-    windows: Res<Windows>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
     mut selection: ResMut<Selection>,
     mut button_events: EventReader<MouseButtonInput>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
@@ -232,32 +236,19 @@ fn input(
         if let MouseButtonInput {
             button: MouseButton::Left,
             state: ButtonState::Pressed,
+            ..
         } = event
         {
-            let window = windows.get_primary().unwrap();
-            if let Some(pos) = window.cursor_position() {
-                // The following code is boilerplate from https://bevy-cheatbook.github.io/cookbook/cursor2world.html#2d-games
-                let window_size = Vec2::new(window.width() as f32, window.height() as f32);
-
-                // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
-                let ndc = (pos / window_size) * 2.0 - Vec2::ONE;
-
-                let (camera, camera_transform) = camera.single();
-                // matrix for undoing the projection and camera transform
-                let ndc_to_world =
-                    camera_transform.compute_matrix() * camera.projection_matrix().inverse();
-
-                // use it to convert ndc to world-space coordinates
-                let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
-
-                // reduce it to a 2D value
-                let world_pos: Vec2 = world_pos.truncate();
-
-                // end of borrowed boilerplate
+            let window = window_query.single();
+            let (camera, camera_transform) = camera.single();
+            if let Some(world_position) = window.cursor_position()
+                .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+                .map(|ray| ray.origin.truncate())
+            {
                 // round down to the gem coordinate
                 let coordinates: IVec2 = (
-                    ((world_pos.x + GEM_SIDE_LENGTH / 2.0) / GEM_SIDE_LENGTH) as i32,
-                    ((GEM_SIDE_LENGTH / 2.0 - world_pos.y) / GEM_SIDE_LENGTH) as i32,
+                    ((world_position.x + GEM_SIDE_LENGTH / 2.0) / GEM_SIDE_LENGTH) as i32,
+                    ((GEM_SIDE_LENGTH / 2.0 - world_position.y) / GEM_SIDE_LENGTH) as i32,
                 )
                     .into();
 
@@ -265,7 +256,7 @@ fn input(
                     selection.0 = board
                         .single()
                         .0
-                        .get(&[coordinates.x as u32, coordinates.y as u32].into())
+                        .get::<UVec2>(&UVec2::new(coordinates.x as u32, coordinates.y as u32))
                         .copied();
                 }
             }
@@ -318,7 +309,7 @@ fn control(
             if let Some(last_selected_gem) = last_selection.0 {
                 let selected_pos = transforms.get(selected_gem).unwrap().translation.xy() / 50.0;
                 let last_selected_pos =
-                    transforms.get(last_selected_gem).unwrap().translation.xy() / 50.0;
+                    transforms.get(last_selected_gem as Entity).unwrap().translation.xy() / 50.0;
 
                 board_commands
                     .push(BoardCommand::Swap(
