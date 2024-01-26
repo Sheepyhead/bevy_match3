@@ -232,7 +232,7 @@ fn input(
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     board: Query<&VisibleBoard>,
 ) {
-    for event in button_events.iter() {
+    for event in button_events.read() {
         if let MouseButtonInput {
             button: MouseButton::Left,
             state: ButtonState::Pressed,
@@ -384,7 +384,7 @@ fn shuffle(
     animations: Query<(), With<MoveTo>>,
 ) {
     if animations.iter().count() == 0 {
-        for event in key_event.iter() {
+        for event in key_event.read() {
             if let KeyboardInput {
                 key_code: Some(KeyCode::S),
                 state: ButtonState::Pressed,

@@ -18,6 +18,7 @@
 | 0.9    | 0.2.0         |
 | 0.10   | N/A           |
 | 0.11   | 0.3.0         |
+| 0.12   | 0.4.0         |
 
 ## Features
 - Configurable number of gem types and board dimensions
@@ -40,8 +41,7 @@ To get started with this crate all you need is to set up the plugin
 use bevy_match3::prelude::*;
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(Match3Plugin)
+        .add_plugins((DefaultPlugins, Match3Plugin))
         .run();
 }
 ```

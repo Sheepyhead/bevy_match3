@@ -185,7 +185,7 @@ impl Board {
                     current_match.push(pos);
                 } else if previous_type.unwrap() != current_type {
                     match current_match.len() {
-                        0 | 1 | 2 => {}
+                        0..=2 => {}
                         _ => matches.add(Match::Straight(current_match.iter().cloned().collect())),
                     }
                     current_match = vec![pos];
@@ -193,7 +193,7 @@ impl Board {
                 }
             }
             match current_match.len() {
-                0 | 1 | 2 => {}
+                0..=2 => {}
                 _ => matches.add(Match::Straight(current_match.iter().cloned().collect())),
             }
             current_match = vec![];

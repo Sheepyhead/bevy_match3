@@ -185,7 +185,7 @@ impl From<(UVec2, UVec2)> for Drop {
 
 impl PartialOrd for Drop {
     fn partial_cmp(&self, other: &Self) -> std::option::Option<std::cmp::Ordering> {
-        Some(self.from.y.cmp(&other.from.y).reverse())
+        Some(self.cmp(other))
     }
 }
 

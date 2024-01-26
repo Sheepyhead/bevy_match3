@@ -76,7 +76,7 @@ impl Plugin for Match3Plugin {
 ///         gem_types: 5,
 ///         board_dimensions: [10, 10].into(),
 ///     })
-///     .add_plugin(Match3Plugin)
+///     .add_plugins(Match3Plugin)
 ///     .run();
 /// ```
 #[derive(Clone, Copy, Resource)]
