@@ -15,5 +15,5 @@ exclude = [".vscode"]
 
 [dependencies]
 bevy = "0.18"
-rand = "0.8.5"
+rand = "0.9.2"
 queues = "1.1.0"
