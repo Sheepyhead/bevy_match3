@@ -14,6 +14,6 @@ exclude = [".vscode"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.12"
+bevy = "0.18"
 rand = "0.8.5"
 queues = "1.1.0"
