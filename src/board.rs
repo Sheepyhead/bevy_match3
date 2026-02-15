@@ -1,6 +1,6 @@
 use bevy::{
-    prelude::*,
     platform::collections::{HashMap, HashSet},
+    prelude::*,
 };
 use rand::prelude::IteratorRandom;
 
@@ -104,12 +104,7 @@ impl Board {
             for y in 0..self.dimensions.y {
                 let pos = [x, y];
                 if self.get(&pos.into()).is_none() {
-                    let new_type = self
-                        .types
-                        .iter()
-                        .choose(&mut rand::thread_rng())
-                        .copied()
-                        .unwrap();
+                    let new_type = self.types.iter().choose(&mut rand::rng()).copied().unwrap();
                     self.insert(pos.into(), new_type);
                     drops.insert((pos.into(), new_type));
                 }

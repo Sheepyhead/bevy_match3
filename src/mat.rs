@@ -6,14 +6,14 @@ pub(crate) enum MatchDirection {
 }
 
 /// Represents the different types of matches made
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Match {
     /// A straight match of 3 or more gems
     Straight(HashSet<UVec2>),
 }
 
 /// A collection of matches
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct Matches {
     pub(crate) matches: Vec<Match>,
 }

@@ -5,10 +5,10 @@
 
 #![deny(missing_docs, clippy::doc_markdown)]
 
-use bevy::{prelude::*, platform::collections::HashMap};
-use board::*;
-use rand::Rng;
 use crate::systems::*;
+use bevy::{platform::collections::HashMap, prelude::*};
+use board::*;
+use rand::RngExt;
 
 mod board;
 mod mat;
@@ -19,8 +19,8 @@ pub mod prelude {
     pub use crate::board::*;
     pub use crate::mat::*;
     pub use crate::systems::*;
-    pub use crate::Match3Plugin;
     pub use crate::Match3Config;
+    pub use crate::Match3Plugin;
 }
 
 /// The central logic plugin of the ``bevy_match3`` crate
@@ -44,7 +44,7 @@ impl Plugin for Match3Plugin {
         let mut gems = HashMap::default();
         (0..board_dimensions.x).for_each(|x| {
             (0..board_dimensions.y).for_each(|y| {
-                gems.insert([x, y].into(), rand::thread_rng().gen_range(0..gem_types));
+                gems.insert([x, y].into(), rand::rng().random_range(0..gem_types));
             })
         });
 
@@ -64,13 +64,13 @@ impl Plugin for Match3Plugin {
 }
 
 /// An optional config for the match3 board. This should be inserted as a resource before the `Match3Plugin`
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```
 /// use bevy::prelude::*;
 /// use bevy_match3::prelude::*;
-/// 
+///
 /// App::new()
 ///     .insert_resource(Match3Config {
 ///         gem_types: 5,
@@ -307,7 +307,7 @@ mod tests {
             .unwrap();
 
         let mut app = App::new();
-        app.add_systems(Update,read_commands);
+        app.add_systems(Update, read_commands);
         app.insert_resource(board.clone());
         app.insert_resource(BoardCommands(queue));
         app.insert_resource(BoardEvents::default());

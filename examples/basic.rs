@@ -1,38 +1,39 @@
+use bevy::window::PrimaryWindow;
 use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
     math::Vec3Swizzles,
-    prelude::*,
     platform::collections::HashMap,
+    prelude::*,
 };
-use bevy::window::PrimaryWindow;
 use bevy_match3::prelude::*;
 
 const GEM_SIDE_LENGTH: f32 = 50.0;
 
 fn main() {
     App::new()
-        .add_plugins(
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        resizable: false,
-                        title: "bevy_match3 basic example".to_string(),
-                        ..default()
-                    }),
-                    ..default()
-                }),
-        )
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resizable: false,
+                title: "bevy_match3 basic example".to_string(),
+                ..default()
+            }),
+            ..default()
+        }))
         .insert_resource(Selection::default())
         .add_plugins(Match3Plugin)
         .add_systems(Startup, setup_graphics)
-        .add_systems(Update, (
-            move_to,
-            consume_events,
-            input,
-            visualize_selection,
-            control,
-            animate_once,
-            shuffle))
+        .add_systems(
+            Update,
+            (
+                move_to,
+                consume_events,
+                input,
+                visualize_selection,
+                control,
+                animate_once,
+                shuffle,
+            ),
+        )
         .run();
 }
 
@@ -49,17 +50,15 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, asset_server: Res<A
 
     commands.spawn((
         Camera2d,
-        Transform::from_xyz(
-            centered_offset_x,
-            0.0 - centered_offset_y,
-            1000.0,
-        ),
+        Transform::from_xyz(centered_offset_x, 0.0 - centered_offset_y, 1000.0),
         MainCamera,
     ));
 
     let mut gems = HashMap::default();
 
-    let vis_board = commands.spawn((Transform::default(), Visibility::default())).id();
+    let vis_board = commands
+        .spawn((Transform::default(), Visibility::default()))
+        .id();
 
     board.iter().for_each(|(position, typ)| {
         let transform = Transform::from_xyz(
@@ -83,7 +82,6 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, asset_server: Res<A
         gems.insert(*position, child);
         commands.entity(vis_board).add_child(child);
     });
-
 
     let board = VisibleBoard(gems);
 
@@ -212,7 +210,7 @@ fn consume_events(
                     *board = temp_board;
                 }
                 _ => {
-                    println!("Received unimplemented event");
+                    dbg!("Received unimplemented event", event);
                 }
             }
         }
@@ -249,7 +247,8 @@ fn input(
             let Ok((camera, camera_transform)) = camera.single() else {
                 return;
             };
-            if let Some(world_position) = window.cursor_position()
+            if let Some(world_position) = window
+                .cursor_position()
                 .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor).ok())
                 .map(|ray| ray.origin.truncate())
             {
@@ -318,8 +317,12 @@ fn control(
         if let Some(selected_gem) = selection.0 {
             if let Some(last_selected_gem) = last_selection.0 {
                 let selected_pos = transforms.get(selected_gem).unwrap().translation.xy() / 50.0;
-                let last_selected_pos =
-                    transforms.get(last_selected_gem as Entity).unwrap().translation.xy() / 50.0;
+                let last_selected_pos = transforms
+                    .get(last_selected_gem as Entity)
+                    .unwrap()
+                    .translation
+                    .xy()
+                    / 50.0;
 
                 board_commands
                     .push(BoardCommand::Swap(
@@ -371,23 +374,18 @@ fn spawn_explosion(
     pos: &Vec2,
 ) {
     let texture_handle = ass.load("explosion.png");
-    let texture_atlas =
-        TextureAtlasLayout::from_grid(UVec2::new(49, 50), 4, 1, None, None);
+    let texture_atlas = TextureAtlasLayout::from_grid(UVec2::new(49, 50), 4, 1, None, None);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
     let atlas = TextureAtlas {
         layout: texture_atlas_handle.clone(),
         index: 0,
     };
-    commands
-        .spawn((
-            Sprite::from_atlas_image(texture_handle.clone(), atlas),
-            Transform::from_translation(pos.extend(0.0)),
-            Visibility::default(),
-            AnimationTimer(Timer::from_seconds(
-                0.1,
-                TimerMode::Repeating,
-            )),
-        ));
+    commands.spawn((
+        Sprite::from_atlas_image(texture_handle.clone(), atlas),
+        Transform::from_translation(pos.extend(0.0)),
+        Visibility::default(),
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+    ));
 }
 
 fn shuffle(

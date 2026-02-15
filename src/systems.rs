@@ -1,7 +1,7 @@
 use crate::{board::*, mat::Matches};
 use bevy::prelude::*;
 use queues::{IsQueue, Queue};
-use rand::{prelude::SliceRandom, thread_rng};
+use rand::{prelude::SliceRandom, rng};
 use std::fmt;
 
 pub(crate) fn read_commands(
@@ -58,7 +58,7 @@ pub(crate) fn read_commands(
                     let mut values = gems.iter().collect::<Vec<_>>();
                     let mut moves =
                         Vec::with_capacity((board.dimensions.x * board.dimensions.y) as usize);
-                    values.shuffle(&mut thread_rng());
+                    values.shuffle(&mut rng());
                     for ((old_key, value), new_key) in values.iter().copied().zip(gems.keys()) {
                         board.insert(*new_key, *value);
                         moves.push((*old_key, *new_key));
@@ -145,7 +145,7 @@ impl BoardEvents {
 pub struct BoardEvents(pub(crate) Queue<BoardEvent>);
 
 /// The events that indicate a possible change in the logic board
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BoardEvent {
     /// Two gems have been successfully swapped, usually as a result of a ``BoardCommand::Swap`` command
     Swapped(UVec2, UVec2),
