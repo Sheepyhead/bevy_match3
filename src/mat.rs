@@ -1,4 +1,4 @@
-use bevy::{math::UVec2, utils::HashSet};
+use bevy::{math::UVec2, platform::collections::HashSet};
 
 pub(crate) enum MatchDirection {
     Horizontal,

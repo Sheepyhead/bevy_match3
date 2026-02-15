@@ -2,7 +2,7 @@ use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
     math::Vec3Swizzles,
     prelude::*,
-    utils::HashMap,
+    platform::collections::HashMap,
 };
 use bevy::window::PrimaryWindow;
 use bevy_match3::prelude::*;
@@ -47,17 +47,19 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, asset_server: Res<A
     let centered_offset_x = board_side_length / 2.0 - GEM_SIDE_LENGTH / 2.0;
     let centered_offset_y = board_side_length / 2.0 - GEM_SIDE_LENGTH / 2.0;
 
-    let mut camera = Camera2dBundle::default();
-    camera.transform = Transform::from_xyz(
-        centered_offset_x,
-        0.0 - centered_offset_y,
-        camera.transform.translation.z,
-    );
-    commands.spawn(camera).insert(MainCamera);
+    commands.spawn((
+        Camera2d,
+        Transform::from_xyz(
+            centered_offset_x,
+            0.0 - centered_offset_y,
+            1000.0,
+        ),
+        MainCamera,
+    ));
 
     let mut gems = HashMap::default();
 
-    let vis_board = commands.spawn(SpatialBundle::default()).id();
+    let vis_board = commands.spawn((Transform::default(), Visibility::default())).id();
 
     board.iter().for_each(|(position, typ)| {
         let transform = Transform::from_xyz(
@@ -67,15 +69,15 @@ fn setup_graphics(mut commands: Commands, board: Res<Board>, asset_server: Res<A
         );
 
         let child = commands
-            .spawn(SpriteBundle {
-                sprite: Sprite {
+            .spawn((
+                Sprite {
+                    image: asset_server.load(&map_type_to_path(*typ)),
                     custom_size: Some(Vec2::new(GEM_SIDE_LENGTH, GEM_SIDE_LENGTH)),
                     ..Sprite::default()
                 },
                 transform,
-                texture: asset_server.load(&map_type_to_path(*typ)),
-                ..SpriteBundle::default()
-            })
+                Visibility::default(),
+            ))
             .insert(Name::new(format!("{};{}", position.x, position.y)))
             .id();
         gems.insert(*position, child);
@@ -106,7 +108,7 @@ fn move_to(
         } else {
             let mut movement = *move_to - transform.translation.xy();
             movement = // Multiplying the move by GEM_SIDE_LENGTH as well as delta seconds means the animation takes exactly 1 second
-                (movement.normalize() * time.delta_seconds() * GEM_SIDE_LENGTH * 5.0).clamp_length_max(movement.length());
+                (movement.normalize() * time.delta_secs() * GEM_SIDE_LENGTH * 5.0).clamp_length_max(movement.length());
             let movement = movement.extend(transform.translation.z);
             transform.translation += movement;
         }
@@ -116,7 +118,7 @@ fn move_to(
 fn consume_events(
     mut commands: Commands,
     mut events: ResMut<BoardEvents>,
-    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
     mut board_commands: ResMut<BoardCommands>,
     ass: Res<AssetServer>,
     mut board: Query<(Entity, &mut VisibleBoard)>,
@@ -124,7 +126,9 @@ fn consume_events(
 ) {
     if animations.iter().count() == 0 {
         if let Ok(event) = events.pop() {
-            let (board_entity, mut board) = board.single_mut();
+            let Ok((board_entity, mut board)) = board.single_mut() else {
+                return;
+            };
             match event {
                 BoardEvent::Swapped(pos1, pos2) => {
                     let gem1 = board.0.get(&pos1).copied().unwrap();
@@ -143,10 +147,10 @@ fn consume_events(
                 BoardEvent::Popped(pos) => {
                     let gem = board.0.get(&pos).copied().unwrap();
                     board.0.remove(&pos);
-                    commands.entity(gem).despawn_recursive();
+                    commands.entity(gem).despawn();
                     spawn_explosion(
                         &ass,
-                        &mut texture_atlases,
+                        &mut *texture_atlases,
                         &mut commands,
                         &board_pos_to_world_pos(&pos),
                     );
@@ -178,15 +182,15 @@ fn consume_events(
                     for (pos, typ) in spawns {
                         let world_pos = board_pos_to_world_pos(&pos);
                         let gem = commands
-                            .spawn(SpriteBundle {
-                                texture: ass.load(&map_type_to_path(typ)),
-                                transform: Transform::from_xyz(world_pos.x, 200.0, 0.0),
-                                sprite: Sprite {
+                            .spawn((
+                                Sprite {
+                                    image: ass.load(&map_type_to_path(typ)),
                                     custom_size: Some([50.0, 50.0].into()),
                                     ..Sprite::default()
                                 },
-                                ..SpriteBundle::default()
-                            })
+                                Transform::from_xyz(world_pos.x, 200.0, 0.0),
+                                Visibility::default(),
+                            ))
                             .insert(MoveTo(world_pos))
                             .id();
                         new_board.0.insert(pos, gem);
@@ -228,7 +232,7 @@ struct Selection(Option<Entity>);
 fn input(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut selection: ResMut<Selection>,
-    mut button_events: EventReader<MouseButtonInput>,
+    mut button_events: MessageReader<MouseButtonInput>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     board: Query<&VisibleBoard>,
 ) {
@@ -239,10 +243,14 @@ fn input(
             ..
         } = event
         {
-            let window = window_query.single();
-            let (camera, camera_transform) = camera.single();
+            let Ok(window) = window_query.single() else {
+                return;
+            };
+            let Ok((camera, camera_transform)) = camera.single() else {
+                return;
+            };
             if let Some(world_position) = window.cursor_position()
-                .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+                .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor).ok())
                 .map(|ray| ray.origin.truncate())
             {
                 // round down to the gem coordinate
@@ -255,6 +263,7 @@ fn input(
                 if coordinates.x >= 0 && coordinates.y >= 0 {
                     selection.0 = board
                         .single()
+                        .unwrap()
                         .0
                         .get::<UVec2>(&UVec2::new(coordinates.x as u32, coordinates.y as u32))
                         .copied();
@@ -277,22 +286,23 @@ fn visualize_selection(
     if selection.is_changed() {
         if let Some(selected_gem) = selection.0 {
             let transform = g_transforms.get(selected_gem).unwrap();
-            if let Ok((_, mut old_transform)) = rectangle.get_single_mut() {
+            if let Ok((_, mut old_transform)) = rectangle.single_mut() {
                 *old_transform = (*transform).into();
             } else {
+                let rect_transform: Transform = (*transform).into();
                 commands
-                    .spawn(SpriteBundle {
-                        texture: ass.load("rectangle.png"),
-                        sprite: Sprite {
+                    .spawn((
+                        Sprite {
+                            image: ass.load("rectangle.png"),
                             custom_size: Some([50.0, 50.0].into()),
                             ..Sprite::default()
                         },
-                        transform: (*transform).into(),
-                        ..SpriteBundle::default()
-                    })
+                        rect_transform,
+                        Visibility::default(),
+                    ))
                     .insert(SelectionRectangle);
             }
-        } else if let Ok((entity, _)) = rectangle.get_single_mut() {
+        } else if let Ok((entity, _)) = rectangle.single_mut() {
             commands.entity(entity).despawn();
         }
     }
@@ -335,22 +345,20 @@ struct AnimationTimer(Timer);
 fn animate_once(
     mut commands: Commands,
     time: Res<Time>,
-    texture_atlases: Res<Assets<TextureAtlas>>,
-    mut timers: Query<(
-        Entity,
-        &mut AnimationTimer,
-        &mut TextureAtlasSprite,
-        &Handle<TextureAtlas>,
-    )>,
+    texture_atlases: Res<Assets<TextureAtlasLayout>>,
+    mut timers: Query<(Entity, &mut AnimationTimer, &mut Sprite)>,
 ) {
-    for (entity, mut timer, mut sprite, texture_atlas_handle) in timers.iter_mut() {
+    for (entity, mut timer, mut sprite) in timers.iter_mut() {
+        let Some(atlas) = sprite.texture_atlas.as_mut() else {
+            continue;
+        };
         timer.0.tick(time.delta());
         if timer.0.just_finished() {
-            let texture_atlas = texture_atlases.get(texture_atlas_handle).unwrap();
-            if sprite.index == 3 {
-                commands.entity(entity).despawn_recursive();
+            let layout = texture_atlases.get(&atlas.layout).unwrap();
+            if atlas.index == 3 {
+                commands.entity(entity).despawn();
             } else {
-                sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+                atlas.index = (atlas.index + 1) % layout.textures.len();
             }
         }
     }
@@ -358,35 +366,39 @@ fn animate_once(
 
 fn spawn_explosion(
     ass: &AssetServer,
-    texture_atlases: &mut Assets<TextureAtlas>,
+    texture_atlases: &mut Assets<TextureAtlasLayout>,
     commands: &mut Commands,
     pos: &Vec2,
 ) {
     let texture_handle = ass.load("explosion.png");
     let texture_atlas =
-        TextureAtlas::from_grid(texture_handle, Vec2::new(49.0, 50.0), 4, 1, None, None);
+        TextureAtlasLayout::from_grid(UVec2::new(49, 50), 4, 1, None, None);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
+    let atlas = TextureAtlas {
+        layout: texture_atlas_handle.clone(),
+        index: 0,
+    };
     commands
-        .spawn(SpriteSheetBundle {
-            texture_atlas: texture_atlas_handle,
-            transform: Transform::from_translation(pos.extend(0.0)),
-            ..SpriteSheetBundle::default()
-        })
-        .insert(AnimationTimer(Timer::from_seconds(
-            0.1,
-            TimerMode::Repeating,
-        )));
+        .spawn((
+            Sprite::from_atlas_image(texture_handle.clone(), atlas),
+            Transform::from_translation(pos.extend(0.0)),
+            Visibility::default(),
+            AnimationTimer(Timer::from_seconds(
+                0.1,
+                TimerMode::Repeating,
+            )),
+        ));
 }
 
 fn shuffle(
     mut board_commands: ResMut<BoardCommands>,
-    mut key_event: EventReader<KeyboardInput>,
+    mut key_event: MessageReader<KeyboardInput>,
     animations: Query<(), With<MoveTo>>,
 ) {
     if animations.iter().count() == 0 {
         for event in key_event.read() {
             if let KeyboardInput {
-                key_code: Some(KeyCode::S),
+                key_code: KeyCode::KeyS,
                 state: ButtonState::Pressed,
                 ..
             } = event

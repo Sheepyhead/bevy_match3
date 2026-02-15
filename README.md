@@ -19,6 +19,12 @@
 | 0.10   | N/A           |
 | 0.11   | 0.3.0         |
 | 0.12   | 0.4.0         |
+| 0.13   | N/A           |
+| 0.14   | N/A           |
+| 0.15   | N/A           |
+| 0.16   | N/A           |
+| 0.17   | N/A           |
+| 0.18   | 0.5.0         |
 
 ## Features
 - Configurable number of gem types and board dimensions

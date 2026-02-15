@@ -5,10 +5,10 @@
 
 #![deny(missing_docs, clippy::doc_markdown)]
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{prelude::*, platform::collections::HashMap};
 use board::*;
 use rand::Rng;
-use systems::*;
+use crate::systems::*;
 
 mod board;
 mod mat;
@@ -32,7 +32,7 @@ impl Plugin for Match3Plugin {
             board_dimensions,
             gem_types,
         } = app
-            .world
+            .world_mut()
             .get_resource::<Match3Config>()
             .copied()
             .unwrap_or_default();
@@ -132,9 +132,9 @@ mod tests {
         app.update();
 
         // check
-        assert_ne!(board, *app.world.get_resource::<Board>().unwrap());
+        assert_ne!(board, *app.world_mut().get_resource::<Board>().unwrap());
         assert_eq!(
-            app.world
+            app.world_mut()
                 .get_resource::<Board>()
                 .unwrap()
                 .get(&[1, 2].into())
@@ -143,7 +143,7 @@ mod tests {
             12
         );
         assert_eq!(
-            app.world
+            app.world_mut()
                 .get_resource::<Board>()
                 .unwrap()
                 .get(&[2, 2].into())
@@ -182,9 +182,9 @@ mod tests {
         app.update();
 
         // check
-        assert_eq!(board, *app.world.get_resource::<Board>().unwrap());
+        assert_eq!(board, *app.world_mut().get_resource::<Board>().unwrap());
         assert_eq!(
-            app.world
+            app.world_mut()
                 .get_resource::<Board>()
                 .unwrap()
                 .get(&[1, 2].into())
@@ -193,7 +193,7 @@ mod tests {
             11
         );
         assert_eq!(
-            app.world
+            app.world_mut()
                 .get_resource::<Board>()
                 .unwrap()
                 .get(&[2, 2].into())
@@ -230,7 +230,7 @@ mod tests {
         app.update();
 
         // check
-        let new_board = app.world.get_resource::<Board>().unwrap();
+        let new_board = app.world_mut().get_resource::<Board>().unwrap();
         assert_ne!(board, *new_board);
         assert_eq!(*new_board.get(&[1, 4].into()).unwrap(), 16);
         assert_eq!(*new_board.get(&[1, 3].into()).unwrap(), 11);
@@ -272,7 +272,7 @@ mod tests {
         app.update();
 
         // check
-        let new_board = app.world.get_resource::<Board>().unwrap();
+        let new_board = app.world_mut().get_resource::<Board>().unwrap();
         assert_ne!(board, *new_board);
         assert_eq!(*new_board.get(&[3, 6].into()).unwrap(), 18);
         assert_eq!(*new_board.get(&[3, 5].into()).unwrap(), 13);
@@ -316,7 +316,7 @@ mod tests {
         app.update();
 
         // check
-        let new_board = app.world.get_resource::<Board>().unwrap();
+        let new_board = app.world_mut().get_resource::<Board>().unwrap();
         assert_ne!(board, *new_board);
         assert_eq!(*new_board.get(&[0, 5].into()).unwrap(), 20);
         assert_eq!(*new_board.get(&[1, 5].into()).unwrap(), 21);
